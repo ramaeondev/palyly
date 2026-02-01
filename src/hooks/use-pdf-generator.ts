@@ -1,7 +1,7 @@
-import { useCallback, useRef } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import html2canvas from 'html2canvas';
 import jsPDF from 'jspdf';
-import { Payslip } from '@/types/payslip';
+import { Payslip, PayslipTemplate } from '@/types/payslip';
 import { formatPeriod } from '@/lib/payslip-utils';
 
 interface UsePdfGeneratorOptions {
@@ -10,29 +10,36 @@ interface UsePdfGeneratorOptions {
 }
 
 interface PdfGeneratorResult {
-  generatePdf: (payslips: Payslip[]) => Promise<void>;
-  printPayslip: () => void;
-  containerRef: React.RefObject<HTMLDivElement>;
+  generatePdf: (payslip: Payslip, template?: PayslipTemplate) => Promise<void>;
+  printPayslip: (payslip: Payslip, template?: PayslipTemplate) => Promise<void>;
   isGenerating: boolean;
 }
 
 export function usePdfGenerator(options: UsePdfGeneratorOptions = {}): PdfGeneratorResult {
   const { quality = 2, scale = 2 } = options;
-  const containerRef = useRef<HTMLDivElement>(null);
-  const isGeneratingRef = useRef(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  const generatePdf = useCallback(async (payslips: Payslip[]) => {
-    if (!containerRef.current || isGeneratingRef.current) return;
+  const generatePdf = useCallback(async (payslip: Payslip, template: PayslipTemplate = 'modern') => {
+    if (isGenerating) return;
 
-    isGeneratingRef.current = true;
+    setIsGenerating(true);
 
     try {
-      const payslipElements = containerRef.current.querySelectorAll('[data-payslip]');
+      // Find the payslip preview element
+      const element = document.getElementById('payslip-preview');
       
-      if (payslipElements.length === 0) {
-        console.error('No payslip elements found');
+      if (!element) {
+        console.error('No payslip preview element found');
         return;
       }
+
+      const canvas = await html2canvas(element, {
+        scale,
+        useCORS: true,
+        allowTaint: true,
+        backgroundColor: '#ffffff',
+        logging: false,
+      });
 
       const pdf = new jsPDF({
         orientation: 'portrait',
@@ -45,59 +52,34 @@ export function usePdfGenerator(options: UsePdfGeneratorOptions = {}): PdfGenera
       const margin = 10;
       const contentWidth = pageWidth - 2 * margin;
 
-      for (let i = 0; i < payslipElements.length; i++) {
-        const element = payslipElements[i] as HTMLElement;
+      const imgData = canvas.toDataURL('image/jpeg', quality);
+      const imgWidth = contentWidth;
+      const imgHeight = (canvas.height * imgWidth) / canvas.width;
 
-        const canvas = await html2canvas(element, {
-          scale,
-          useCORS: true,
-          allowTaint: true,
-          backgroundColor: '#ffffff',
-          logging: false,
-        });
+      // Center vertically if smaller than page
+      const yOffset = imgHeight < pageHeight - 2 * margin 
+        ? margin + (pageHeight - 2 * margin - imgHeight) / 2 
+        : margin;
 
-        const imgData = canvas.toDataURL('image/jpeg', quality);
-        const imgWidth = contentWidth;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-        if (i > 0) {
-          pdf.addPage();
-        }
-
-        // Center vertically if smaller than page
-        const yOffset = imgHeight < pageHeight - 2 * margin 
-          ? margin + (pageHeight - 2 * margin - imgHeight) / 2 
-          : margin;
-
-        pdf.addImage(imgData, 'JPEG', margin, yOffset, imgWidth, imgHeight);
-      }
+      pdf.addImage(imgData, 'JPEG', margin, yOffset, imgWidth, imgHeight);
 
       // Generate filename
-      const firstPayslip = payslips[0];
-      let filename = 'payslip';
-      
-      if (payslips.length === 1) {
-        filename = `payslip-${firstPayslip.employee.employeeId}-${formatPeriod(firstPayslip.period).replace(' ', '-')}`;
-      } else {
-        filename = `payslips-${formatPeriod(firstPayslip.period).replace(' ', '-')}-batch-${payslips.length}`;
-      }
-
+      const filename = `payslip-${payslip.employee.employeeId}-${formatPeriod(payslip.period).replace(' ', '-')}`;
       pdf.save(`${filename}.pdf`);
     } catch (error) {
       console.error('Error generating PDF:', error);
     } finally {
-      isGeneratingRef.current = false;
+      setIsGenerating(false);
     }
-  }, [quality, scale]);
+  }, [quality, scale, isGenerating]);
 
-  const printPayslip = useCallback(() => {
+  const printPayslip = useCallback(async (payslip: Payslip, template: PayslipTemplate = 'modern') => {
     window.print();
   }, []);
 
   return {
     generatePdf,
     printPayslip,
-    containerRef: containerRef as React.RefObject<HTMLDivElement>,
-    isGenerating: isGeneratingRef.current,
+    isGenerating,
   };
 }

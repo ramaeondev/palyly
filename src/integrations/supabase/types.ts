@@ -14,16 +14,333 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      clients: {
+        Row: {
+          address: string | null
+          business_type: string | null
+          city: string | null
+          contact_person: string | null
+          country: string | null
+          created_at: string
+          email: string | null
+          firm_id: string
+          id: string
+          is_active: boolean
+          logo_url: string | null
+          name: string
+          phone: string | null
+          postal_code: string | null
+          state: string | null
+          updated_at: string
+        }
+        Insert: {
+          address?: string | null
+          business_type?: string | null
+          city?: string | null
+          contact_person?: string | null
+          country?: string | null
+          created_at?: string
+          email?: string | null
+          firm_id: string
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name: string
+          phone?: string | null
+          postal_code?: string | null
+          state?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address?: string | null
+          business_type?: string | null
+          city?: string | null
+          contact_person?: string | null
+          country?: string | null
+          created_at?: string
+          email?: string | null
+          firm_id?: string
+          id?: string
+          is_active?: boolean
+          logo_url?: string | null
+          name?: string
+          phone?: string | null
+          postal_code?: string | null
+          state?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "clients_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employees: {
+        Row: {
+          bank_account_number: string | null
+          bank_name: string | null
+          client_id: string
+          created_at: string
+          date_of_joining: string | null
+          department: string | null
+          designation: string | null
+          email: string | null
+          employee_code: string
+          full_name: string
+          id: string
+          is_active: boolean
+          pan_number: string | null
+          phone: string | null
+          uan_number: string | null
+          updated_at: string
+        }
+        Insert: {
+          bank_account_number?: string | null
+          bank_name?: string | null
+          client_id: string
+          created_at?: string
+          date_of_joining?: string | null
+          department?: string | null
+          designation?: string | null
+          email?: string | null
+          employee_code: string
+          full_name: string
+          id?: string
+          is_active?: boolean
+          pan_number?: string | null
+          phone?: string | null
+          uan_number?: string | null
+          updated_at?: string
+        }
+        Update: {
+          bank_account_number?: string | null
+          bank_name?: string | null
+          client_id?: string
+          created_at?: string
+          date_of_joining?: string | null
+          department?: string | null
+          designation?: string | null
+          email?: string | null
+          employee_code?: string
+          full_name?: string
+          id?: string
+          is_active?: boolean
+          pan_number?: string | null
+          phone?: string | null
+          uan_number?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employees_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      firms: {
+        Row: {
+          address: string | null
+          city: string | null
+          country: string | null
+          created_at: string
+          email: string | null
+          id: string
+          logo_url: string | null
+          name: string
+          phone: string | null
+          postal_code: string | null
+          state: string | null
+          updated_at: string
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          logo_url?: string | null
+          name: string
+          phone?: string | null
+          postal_code?: string | null
+          state?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          email?: string | null
+          id?: string
+          logo_url?: string | null
+          name?: string
+          phone?: string | null
+          postal_code?: string | null
+          state?: string | null
+          updated_at?: string
+          website?: string | null
+        }
+        Relationships: []
+      }
+      payslips: {
+        Row: {
+          basic_salary: number
+          created_at: string
+          currency: string
+          deductions: Json
+          earnings: Json
+          employee_id: string
+          generated_by: string | null
+          gross_earnings: number
+          id: string
+          net_pay: number
+          notes: string | null
+          pay_date: string
+          pay_period: string
+          payslip_number: string
+          total_deductions: number
+          updated_at: string
+        }
+        Insert: {
+          basic_salary?: number
+          created_at?: string
+          currency?: string
+          deductions?: Json
+          earnings?: Json
+          employee_id: string
+          generated_by?: string | null
+          gross_earnings?: number
+          id?: string
+          net_pay?: number
+          notes?: string | null
+          pay_date: string
+          pay_period: string
+          payslip_number: string
+          total_deductions?: number
+          updated_at?: string
+        }
+        Update: {
+          basic_salary?: number
+          created_at?: string
+          currency?: string
+          deductions?: Json
+          earnings?: Json
+          employee_id?: string
+          generated_by?: string | null
+          gross_earnings?: number
+          id?: string
+          net_pay?: number
+          notes?: string | null
+          pay_date?: string
+          pay_period?: string
+          payslip_number?: string
+          total_deductions?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payslips_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string
+          firm_id: string
+          full_name: string
+          id: string
+          is_active: boolean
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email: string
+          firm_id: string
+          full_name: string
+          id?: string
+          is_active?: boolean
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string
+          firm_id?: string
+          full_name?: string
+          id?: string
+          is_active?: boolean
+          phone?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "profiles_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      user_roles: {
+        Row: {
+          created_at: string
+          id: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role: Database["public"]["Enums"]["app_role"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      get_user_firm_id: { Args: { _user_id: string }; Returns: string }
+      has_role: {
+        Args: {
+          _role: Database["public"]["Enums"]["app_role"]
+          _user_id: string
+        }
+        Returns: boolean
+      }
     }
     Enums: {
-      [_ in never]: never
+      app_role: "super_admin" | "admin" | "user"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -150,6 +467,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      app_role: ["super_admin", "admin", "user"],
+    },
   },
 } as const

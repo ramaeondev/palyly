@@ -16,6 +16,7 @@ export function PayslipGenerator() {
   const [activeTab, setActiveTab] = useState('organization');
   const [generatedPayslip, setGeneratedPayslip] = useState<Payslip | null>(null);
   const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
   
   const {
     formState,
@@ -39,7 +40,7 @@ export function PayslipGenerator() {
     netPay,
   } = usePayslipForm();
 
-  const { generatePdf, printPayslip, containerRef } = usePdfGenerator();
+  const { generatePdf, printPayslip, isGenerating } = usePdfGenerator();
 
   const handleGeneratePreview = () => {
     const payslip = generatePayslipFromForm();
@@ -61,7 +62,7 @@ export function PayslipGenerator() {
 
   const handleDownloadPdf = async () => {
     if (generatedPayslip) {
-      await generatePdf([generatedPayslip]);
+      await generatePdf(generatedPayslip, formState.template);
       toast({
         title: 'PDF Downloaded',
         description: 'Your payslip has been downloaded as a PDF.',
@@ -70,7 +71,9 @@ export function PayslipGenerator() {
   };
 
   const handlePrint = () => {
-    printPayslip();
+    if (generatedPayslip) {
+      printPayslip(generatedPayslip, formState.template);
+    }
   };
 
   const handleReset = () => {
@@ -99,11 +102,11 @@ export function PayslipGenerator() {
           <div className="flex items-center gap-2">
             {isPreviewMode && generatedPayslip && (
               <>
-                <Button variant="outline" size="sm" onClick={handlePrint}>
+                <Button variant="outline" size="sm" onClick={handlePrint} disabled={isGenerating}>
                   <Printer className="h-4 w-4 mr-2" />
                   Print
                 </Button>
-                <Button size="sm" onClick={handleDownloadPdf} className="btn-gradient">
+                <Button size="sm" onClick={handleDownloadPdf} disabled={isGenerating} className="btn-gradient">
                   <Download className="h-4 w-4 mr-2" />
                   Download PDF
                 </Button>
@@ -129,7 +132,7 @@ export function PayslipGenerator() {
               </p>
             </div>
             
-            <div ref={containerRef} className="print:m-0">
+            <div ref={containerRef} className="print:m-0" id="payslip-preview">
               <PayslipPreview payslip={generatedPayslip} template={formState.template} />
             </div>
           </div>
