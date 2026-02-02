@@ -14,6 +14,47 @@ export type Database = {
   }
   public: {
     Tables: {
+      client_users: {
+        Row: {
+          client_id: string
+          created_at: string
+          email: string
+          full_name: string
+          id: string
+          is_active: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          client_id: string
+          created_at?: string
+          email: string
+          full_name: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          client_id?: string
+          created_at?: string
+          email?: string
+          full_name?: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_users_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       clients: {
         Row: {
           address: string | null
@@ -75,6 +116,44 @@ export type Database = {
             columns: ["firm_id"]
             isOneToOne: false
             referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      employee_users: {
+        Row: {
+          created_at: string
+          email: string
+          employee_id: string
+          id: string
+          is_active: boolean
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          email: string
+          employee_id: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string
+          employee_id?: string
+          id?: string
+          is_active?: boolean
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_users_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: true
+            referencedRelation: "employees"
             referencedColumns: ["id"]
           },
         ]
@@ -191,6 +270,66 @@ export type Database = {
           website?: string | null
         }
         Relationships: []
+      }
+      invitations: {
+        Row: {
+          client_id: string | null
+          created_at: string
+          email: string
+          employee_id: string | null
+          expires_at: string
+          full_name: string | null
+          id: string
+          invite_type: Database["public"]["Enums"]["invite_type"]
+          invited_by: string
+          status: Database["public"]["Enums"]["invite_status"]
+          token: string
+          updated_at: string
+        }
+        Insert: {
+          client_id?: string | null
+          created_at?: string
+          email: string
+          employee_id?: string | null
+          expires_at?: string
+          full_name?: string | null
+          id?: string
+          invite_type: Database["public"]["Enums"]["invite_type"]
+          invited_by: string
+          status?: Database["public"]["Enums"]["invite_status"]
+          token: string
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string | null
+          created_at?: string
+          email?: string
+          employee_id?: string | null
+          expires_at?: string
+          full_name?: string | null
+          id?: string
+          invite_type?: Database["public"]["Enums"]["invite_type"]
+          invited_by?: string
+          status?: Database["public"]["Enums"]["invite_status"]
+          token?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invitations_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "invitations_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payslips: {
         Row: {
@@ -330,6 +469,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_client_user_client_id: { Args: { _user_id: string }; Returns: string }
+      get_employee_user_employee_id: {
+        Args: { _user_id: string }
+        Returns: string
+      }
       get_user_firm_id: { Args: { _user_id: string }; Returns: string }
       has_role: {
         Args: {
@@ -338,9 +482,13 @@ export type Database = {
         }
         Returns: boolean
       }
+      is_client_user: { Args: { _user_id: string }; Returns: boolean }
+      is_employee_user: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
       app_role: "super_admin" | "admin" | "user"
+      invite_status: "pending" | "accepted" | "expired" | "cancelled"
+      invite_type: "client" | "employee"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -469,6 +617,8 @@ export const Constants = {
   public: {
     Enums: {
       app_role: ["super_admin", "admin", "user"],
+      invite_status: ["pending", "accepted", "expired", "cancelled"],
+      invite_type: ["client", "employee"],
     },
   },
 } as const
