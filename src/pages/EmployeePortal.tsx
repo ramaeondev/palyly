@@ -1,0 +1,349 @@
+import { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Skeleton } from '@/components/ui/skeleton';
+import { 
+  User, 
+  FileText, 
+  Download,
+  LogOut,
+  ArrowLeft,
+  Eye,
+  Calendar,
+  DollarSign,
+  Briefcase
+} from 'lucide-react';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from '@/hooks/use-toast';
+import type { Tables } from '@/integrations/supabase/types';
+
+type Employee = Tables<'employees'>;
+type Payslip = Tables<'payslips'>;
+
+export default function EmployeePortal() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
+  const [employee, setEmployee] = useState<Employee | null>(null);
+  const [payslips, setPayslips] = useState<Payslip[]>([]);
+  
+  // Auth form state
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [isAuthLoading, setIsAuthLoading] = useState(false);
+
+  useEffect(() => {
+    checkAuth();
+  }, []);
+
+  const checkAuth = async () => {
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (session) {
+        // Check if user is an employee user
+        const { data: employeeUser } = await supabase
+          .from('employee_users')
+          .select('*, employees(*)')
+          .eq('user_id', session.user.id)
+          .single();
+
+        if (employeeUser) {
+          setIsAuthenticated(true);
+          setEmployee(employeeUser.employees as Employee);
+          await fetchPayslips(employeeUser.employee_id);
+        }
+      }
+    } catch (error) {
+      console.error('Auth check failed:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const fetchPayslips = async (employeeId: string) => {
+    try {
+      const { data } = await supabase
+        .from('payslips')
+        .select('*')
+        .eq('employee_id', employeeId)
+        .order('pay_date', { ascending: false });
+
+      if (data) {
+        setPayslips(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch payslips:', error);
+    }
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsAuthLoading(true);
+
+    try {
+      const { error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
+
+      if (error) throw error;
+
+      toast({ title: 'Welcome!', description: 'You have been logged in.' });
+      await checkAuth();
+    } catch (error: unknown) {
+      toast({
+        title: 'Login Failed',
+        description: error instanceof Error ? error.message : 'Invalid credentials',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsAuthLoading(false);
+    }
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    setIsAuthenticated(false);
+    setEmployee(null);
+    setPayslips([]);
+  };
+
+  const totalNetPay = payslips.reduce((sum, p) => sum + Number(p.net_pay), 0);
+  const latestPayslip = payslips[0];
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="space-y-4">
+          <Skeleton className="h-12 w-48 mx-auto" />
+          <Skeleton className="h-4 w-32 mx-auto" />
+        </div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader className="text-center">
+            <div className="h-12 w-12 rounded-xl bg-primary flex items-center justify-center mx-auto mb-4">
+              <User className="h-6 w-6 text-primary-foreground" />
+            </div>
+            <CardTitle className="text-2xl">Employee Portal</CardTitle>
+            <CardDescription>
+              Sign in to view your payslips
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <form onSubmit={handleLogin} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="email">Email</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="your@email.com"
+                  required
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="••••••••"
+                  required
+                />
+              </div>
+              <Button type="submit" className="w-full btn-gradient" disabled={isAuthLoading}>
+                {isAuthLoading ? 'Signing in...' : 'Sign In'}
+              </Button>
+            </form>
+            
+            <div className="mt-6 text-center">
+              <Link to="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+                <ArrowLeft className="h-4 w-4 inline mr-1" />
+                Back to Home
+              </Link>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-background">
+      {/* Header */}
+      <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur">
+        <div className="container flex h-16 items-center justify-between">
+          <div className="flex items-center gap-4">
+            <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center">
+              <User className="h-5 w-5 text-primary-foreground" />
+            </div>
+            <div>
+              <h1 className="text-lg font-semibold">{employee?.full_name}</h1>
+              <p className="text-xs text-muted-foreground">{employee?.designation} • {employee?.department}</p>
+            </div>
+          </div>
+          <Button variant="ghost" size="sm" onClick={handleLogout}>
+            <LogOut className="h-4 w-4 mr-2" />
+            Sign Out
+          </Button>
+        </div>
+      </header>
+
+      <main className="container py-6">
+        {/* Profile Card */}
+        <Card className="mb-6">
+          <CardContent className="p-6">
+            <div className="flex flex-col md:flex-row gap-6">
+              <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                <User className="h-10 w-10 text-primary" />
+              </div>
+              <div className="grid gap-4 flex-1 sm:grid-cols-2 lg:grid-cols-4">
+                <div>
+                  <p className="text-sm text-muted-foreground">Employee ID</p>
+                  <p className="font-medium">{employee?.employee_code}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Department</p>
+                  <p className="font-medium">{employee?.department || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Designation</p>
+                  <p className="font-medium">{employee?.designation || '-'}</p>
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">Date of Joining</p>
+                  <p className="font-medium">
+                    {employee?.date_of_joining 
+                      ? new Date(employee.date_of_joining).toLocaleDateString() 
+                      : '-'}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Stats */}
+        <div className="grid gap-4 md:grid-cols-3 mb-6">
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center">
+                  <FileText className="h-6 w-6 text-primary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{payslips.length}</p>
+                  <p className="text-sm text-muted-foreground">Total Payslips</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-xl bg-success/10 flex items-center justify-center">
+                  <DollarSign className="h-6 w-6 text-success" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">
+                    {latestPayslip?.currency || 'INR'} {latestPayslip?.net_pay?.toLocaleString() || 0}
+                  </p>
+                  <p className="text-sm text-muted-foreground">Latest Net Pay</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+          <Card>
+            <CardContent className="p-6">
+              <div className="flex items-center gap-4">
+                <div className="h-12 w-12 rounded-xl bg-info/10 flex items-center justify-center">
+                  <Calendar className="h-6 w-6 text-info" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{latestPayslip?.pay_period || '-'}</p>
+                  <p className="text-sm text-muted-foreground">Latest Period</p>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Payslips Table */}
+        <Card>
+          <CardHeader>
+            <CardTitle>My Payslips</CardTitle>
+            <CardDescription>View and download your salary statements</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {payslips.length === 0 ? (
+              <div className="text-center py-12">
+                <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <h3 className="text-lg font-semibold mb-2">No Payslips Yet</h3>
+                <p className="text-muted-foreground">
+                  Your payslips will appear here once they are generated.
+                </p>
+              </div>
+            ) : (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Payslip #</TableHead>
+                    <TableHead>Period</TableHead>
+                    <TableHead>Gross Earnings</TableHead>
+                    <TableHead>Deductions</TableHead>
+                    <TableHead>Net Pay</TableHead>
+                    <TableHead>Pay Date</TableHead>
+                    <TableHead></TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {payslips.map((payslip) => (
+                    <TableRow key={payslip.id}>
+                      <TableCell className="font-mono">{payslip.payslip_number}</TableCell>
+                      <TableCell>{payslip.pay_period}</TableCell>
+                      <TableCell className="text-success">
+                        {payslip.currency} {payslip.gross_earnings.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="text-destructive">
+                        {payslip.currency} {payslip.total_deductions.toLocaleString()}
+                      </TableCell>
+                      <TableCell className="font-semibold">
+                        {payslip.currency} {payslip.net_pay.toLocaleString()}
+                      </TableCell>
+                      <TableCell>{new Date(payslip.pay_date).toLocaleDateString()}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-2">
+                          <Button variant="ghost" size="sm">
+                            <Eye className="h-4 w-4 mr-1" />
+                            View
+                          </Button>
+                          <Button variant="ghost" size="sm">
+                            <Download className="h-4 w-4 mr-1" />
+                            PDF
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
+          </CardContent>
+        </Card>
+      </main>
+    </div>
+  );
+}

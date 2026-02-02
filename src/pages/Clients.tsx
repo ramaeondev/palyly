@@ -24,7 +24,8 @@ import {
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, Pencil, Trash2, Building2, Users, Loader2 } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Building2, Users, Loader2, Mail } from 'lucide-react';
+import { InviteDialog } from '@/components/InviteDialog';
 
 interface Client {
   id: string;
@@ -82,6 +83,8 @@ export default function Clients() {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [formData, setFormData] = useState<ClientFormData>(initialFormData);
   const [isSaving, setIsSaving] = useState(false);
+  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
+  const [inviteClient, setInviteClient] = useState<Client | null>(null);
 
   useEffect(() => {
     fetchClients();
@@ -360,6 +363,17 @@ export default function Clients() {
                             <Button
                               variant="ghost"
                               size="icon"
+                              onClick={() => {
+                                setInviteClient(client);
+                                setIsInviteDialogOpen(true);
+                              }}
+                              title="Send Portal Invite"
+                            >
+                              <Mail className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               onClick={() => handleOpenDialog(client)}
                             >
                               <Pencil className="h-4 w-4" />
@@ -580,6 +594,17 @@ export default function Clients() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Invite Dialog */}
+      {inviteClient && (
+        <InviteDialog
+          open={isInviteDialogOpen}
+          onOpenChange={setIsInviteDialogOpen}
+          inviteType="client"
+          targetId={inviteClient.id}
+          targetName={inviteClient.name}
+        />
+      )}
     </DashboardLayout>
   );
 }

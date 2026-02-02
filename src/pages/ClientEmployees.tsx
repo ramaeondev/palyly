@@ -33,7 +33,9 @@ import {
   Loader2,
   ArrowLeft,
   FileText,
+  Mail,
 } from 'lucide-react';
+import { InviteDialog } from '@/components/InviteDialog';
 
 interface Client {
   id: string;
@@ -99,6 +101,8 @@ export default function ClientEmployees() {
   const [selectedEmployee, setSelectedEmployee] = useState<Employee | null>(null);
   const [formData, setFormData] = useState<EmployeeFormData>(initialFormData);
   const [isSaving, setIsSaving] = useState(false);
+  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
+  const [inviteEmployee, setInviteEmployee] = useState<Employee | null>(null);
 
   useEffect(() => {
     if (clientId) {
@@ -376,6 +380,17 @@ export default function ClientEmployees() {
                             <Button
                               variant="ghost"
                               size="icon"
+                              onClick={() => {
+                                setInviteEmployee(employee);
+                                setIsInviteDialogOpen(true);
+                              }}
+                              title="Send Portal Invite"
+                            >
+                              <Mail className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
                               onClick={() => handleOpenDialog(employee)}
                             >
                               <Pencil className="h-4 w-4" />
@@ -612,6 +627,17 @@ export default function ClientEmployees() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Invite Dialog */}
+      {inviteEmployee && (
+        <InviteDialog
+          open={isInviteDialogOpen}
+          onOpenChange={setIsInviteDialogOpen}
+          inviteType="employee"
+          targetId={inviteEmployee.id}
+          targetName={inviteEmployee.full_name}
+        />
+      )}
     </DashboardLayout>
   );
 }
