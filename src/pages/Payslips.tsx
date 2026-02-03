@@ -57,6 +57,16 @@ import { CheckCircle2, AlertCircle, Upload, X } from 'lucide-react';
 interface Client {
   id: string;
   name: string;
+  business_type: string | null;
+  address: string | null;
+  city: string | null;
+  state: string | null;
+  country: string | null;
+  postal_code: string | null;
+  phone: string | null;
+  email: string | null;
+  logo_url: string | null;
+  contact_person: string | null;
 }
 
 interface Employee {
@@ -148,7 +158,7 @@ export default function Payslips() {
     try {
       const { data, error } = await supabase
         .from('clients')
-        .select('id, name')
+        .select('*')
         .order('name');
 
       if (error) throw error;
@@ -233,22 +243,26 @@ export default function Payslips() {
   };
 
   const getFormState = (): PayslipFormState | null => {
-    if (!selectedEmployee || !firm) return null;
+    if (!selectedEmployee || !selectedClientId) return null;
+
+    // Find the selected client for organization details
+    const selectedClient = clients.find((c) => c.id === selectedClientId);
+    if (!selectedClient) return null;
 
     const { startDate, endDate } = getPeriodDateRange(payMonth, payYear);
 
+    // Use Client details for the payslip header, not Firm
     const organization: Organization = {
-      id: firm.id,
-      name: firm.name,
-      address: firm.address || '',
-      city: firm.city || '',
-      state: firm.state || '',
-      country: firm.country || '',
-      postalCode: firm.postal_code || '',
-      phone: firm.phone || '',
-      email: firm.email || '',
-      logoUrl: firm.logo_url || '',
-      website: firm.website || '',
+      id: selectedClient.id,
+      name: selectedClient.name,
+      address: selectedClient.address || '',
+      city: selectedClient.city || '',
+      state: selectedClient.state || '',
+      country: selectedClient.country || '',
+      postalCode: selectedClient.postal_code || '',
+      phone: selectedClient.phone || '',
+      email: selectedClient.email || '',
+      logoUrl: selectedClient.logo_url || '',
     };
 
     const employee: PayslipEmployee = {

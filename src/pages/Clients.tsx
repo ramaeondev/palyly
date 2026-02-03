@@ -23,9 +23,16 @@ import {
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Separator } from '@/components/ui/separator';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, Pencil, Trash2, Building2, Users, Loader2, Mail } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Building2, Users, Loader2, Mail, Upload } from 'lucide-react';
 import { InviteDialog } from '@/components/InviteDialog';
+import { CustomFieldsEditor, type CustomField } from '@/components/CustomFieldsEditor';
+import { ImageUpload } from '@/components/ImageUpload';
+import { BulkImport } from '@/components/BulkImport';
+import type { Json } from '@/integrations/supabase/types';
 
 interface Client {
   id: string;
@@ -43,6 +50,7 @@ interface Client {
   contact_person: string | null;
   is_active: boolean;
   created_at: string;
+  custom_fields: Json;
   employees_count?: number;
 }
 
@@ -57,6 +65,13 @@ interface ClientFormData {
   phone: string;
   email: string;
   contact_person: string;
+  logo_url: string;
+  custom_fields: CustomField[];
+}
+
+interface FormErrors {
+  name?: string;
+  email?: string;
 }
 
 const initialFormData: ClientFormData = {
@@ -70,6 +85,8 @@ const initialFormData: ClientFormData = {
   phone: '',
   email: '',
   contact_person: '',
+  logo_url: '',
+  custom_fields: [],
 };
 
 export default function Clients() {
@@ -82,9 +99,11 @@ export default function Clients() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
   const [formData, setFormData] = useState<ClientFormData>(initialFormData);
+  const [formErrors, setFormErrors] = useState<FormErrors>({});
   const [isSaving, setIsSaving] = useState(false);
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [inviteClient, setInviteClient] = useState<Client | null>(null);
+  const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
 
   useEffect(() => {
     fetchClients();
@@ -124,7 +143,20 @@ export default function Clients() {
     }
   };
 
+  const parseCustomFields = (json: Json): CustomField[] => {
+    if (!json || !Array.isArray(json)) return [];
+    return json.map((item: unknown) => {
+      const obj = item as Record<string, unknown>;
+      return {
+        id: String(obj.id || crypto.randomUUID()),
+        name: String(obj.name || ''),
+        value: String(obj.value || ''),
+      };
+    });
+  };
+
   const handleOpenDialog = (client?: Client) => {
+    setFormErrors({});
     if (client) {
       setSelectedClient(client);
       setFormData({
@@ -138,6 +170,8 @@ export default function Clients() {
         phone: client.phone || '',
         email: client.email || '',
         contact_person: client.contact_person || '',
+        logo_url: client.logo_url || '',
+        custom_fields: parseCustomFields(client.custom_fields),
       });
     } else {
       setSelectedClient(null);
@@ -146,12 +180,32 @@ export default function Clients() {
     setIsDialogOpen(true);
   };
 
-  const handleSave = async () => {
+  const validateForm = (): boolean => {
+    const errors: FormErrors = {};
+    
     if (!formData.name.trim()) {
+      errors.name = 'Client name is required';
+    }
+    
+    if (!formData.email.trim()) {
+      errors.email = 'Email is required';
+    } else {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(formData.email)) {
+        errors.email = 'Invalid email format';
+      }
+    }
+
+    setFormErrors(errors);
+    return Object.keys(errors).length === 0;
+  };
+
+  const handleSave = async () => {
+    if (!validateForm()) {
       toast({
         variant: 'destructive',
         title: 'Validation Error',
-        description: 'Client name is required',
+        description: 'Please fix the errors in the form',
       });
       return;
     }
@@ -159,22 +213,25 @@ export default function Clients() {
     setIsSaving(true);
 
     try {
+      const clientData = {
+        name: formData.name,
+        business_type: formData.business_type || null,
+        address: formData.address || null,
+        city: formData.city || null,
+        state: formData.state || null,
+        country: formData.country || null,
+        postal_code: formData.postal_code || null,
+        phone: formData.phone || null,
+        email: formData.email || null,
+        contact_person: formData.contact_person || null,
+        logo_url: formData.logo_url || null,
+        custom_fields: formData.custom_fields as unknown as Json,
+      };
+
       if (selectedClient) {
-        // Update existing client
         const { error } = await supabase
           .from('clients')
-          .update({
-            name: formData.name,
-            business_type: formData.business_type || null,
-            address: formData.address || null,
-            city: formData.city || null,
-            state: formData.state || null,
-            country: formData.country || null,
-            postal_code: formData.postal_code || null,
-            phone: formData.phone || null,
-            email: formData.email || null,
-            contact_person: formData.contact_person || null,
-          })
+          .update(clientData)
           .eq('id', selectedClient.id);
 
         if (error) throw error;
@@ -184,22 +241,18 @@ export default function Clients() {
           description: 'Client updated successfully',
         });
       } else {
-        // Create new client
         const { error } = await supabase.from('clients').insert({
+          ...clientData,
           firm_id: firm?.id,
-          name: formData.name,
-          business_type: formData.business_type || null,
-          address: formData.address || null,
-          city: formData.city || null,
-          state: formData.state || null,
-          country: formData.country || null,
-          postal_code: formData.postal_code || null,
-          phone: formData.phone || null,
-          email: formData.email || null,
-          contact_person: formData.contact_person || null,
         });
 
-        if (error) throw error;
+        if (error) {
+          if (error.code === '23505') {
+            setFormErrors({ email: 'A client with this email already exists' });
+            throw new Error('A client with this email already exists');
+          }
+          throw error;
+        }
 
         toast({
           title: 'Success',
@@ -209,13 +262,17 @@ export default function Clients() {
 
       setIsDialogOpen(false);
       fetchClients();
-    } catch (error) {
+    } catch (error: unknown) {
       console.error('Error saving client:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Failed to save client',
-      });
+      if (error instanceof Error && error.message.includes('email')) {
+        // Error already set
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Failed to save client',
+        });
+      }
     } finally {
       setIsSaving(false);
     }
@@ -253,6 +310,44 @@ export default function Clients() {
     }
   };
 
+  const handleBulkImport = async (data: Record<string, string>[]): Promise<{ success: number; errors: string[] }> => {
+    const errors: string[] = [];
+    let success = 0;
+
+    for (const row of data) {
+      try {
+        const { error } = await supabase.from('clients').insert({
+          firm_id: firm?.id,
+          name: row.name,
+          business_type: row.business_type || null,
+          address: row.address || null,
+          city: row.city || null,
+          state: row.state || null,
+          country: row.country || null,
+          postal_code: row.postal_code || null,
+          phone: row.phone || null,
+          email: row.email || null,
+          contact_person: row.contact_person || null,
+        });
+
+        if (error) {
+          if (error.code === '23505') {
+            errors.push(`${row.name}: Duplicate email`);
+          } else {
+            errors.push(`${row.name}: ${error.message}`);
+          }
+        } else {
+          success++;
+        }
+      } catch (e) {
+        errors.push(`${row.name}: Unknown error`);
+      }
+    }
+
+    await fetchClients();
+    return { success, errors };
+  };
+
   const filteredClients = clients.filter(
     (client) =>
       client.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -275,10 +370,16 @@ export default function Clients() {
             />
           </div>
           {isAdmin() && (
-            <Button onClick={() => handleOpenDialog()}>
-              <Plus className="mr-2 h-4 w-4" />
-              Add Client
-            </Button>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => setIsBulkImportOpen(true)}>
+                <Upload className="mr-2 h-4 w-4" />
+                Import
+              </Button>
+              <Button onClick={() => handleOpenDialog()}>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Client
+              </Button>
+            </div>
           )}
         </div>
 
@@ -287,10 +388,10 @@ export default function Clients() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Client Name</TableHead>
+                <TableHead>Client</TableHead>
                 <TableHead>Business Type</TableHead>
                 <TableHead>Contact Person</TableHead>
-                <TableHead>Phone</TableHead>
+                <TableHead>Email</TableHead>
                 <TableHead>Employees</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -325,17 +426,25 @@ export default function Clients() {
               ) : (
                 filteredClients.map((client) => (
                   <TableRow key={client.id}>
-                    <TableCell className="font-medium">
-                      <Link
-                        to={`/clients/${client.id}/employees`}
-                        className="hover:text-primary hover:underline"
-                      >
-                        {client.name}
-                      </Link>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-10 w-10">
+                          <AvatarImage src={client.logo_url || undefined} />
+                          <AvatarFallback className="bg-primary/10 text-primary">
+                            {client.name.substring(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <Link
+                          to={`/clients/${client.id}/employees`}
+                          className="font-medium hover:text-primary hover:underline"
+                        >
+                          {client.name}
+                        </Link>
+                      </div>
                     </TableCell>
                     <TableCell>{client.business_type || '-'}</TableCell>
                     <TableCell>{client.contact_person || '-'}</TableCell>
-                    <TableCell>{client.phone || '-'}</TableCell>
+                    <TableCell>{client.email || '-'}</TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <Users className="h-4 w-4 text-muted-foreground" />
@@ -349,11 +458,7 @@ export default function Clients() {
                     </TableCell>
                     <TableCell className="text-right">
                       <div className="flex justify-end gap-2">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          asChild
-                        >
+                        <Button variant="ghost" size="icon" asChild>
                           <Link to={`/clients/${client.id}/employees`}>
                             <Users className="h-4 w-4" />
                           </Link>
@@ -402,7 +507,7 @@ export default function Clients() {
 
       {/* Create/Edit Dialog */}
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl">
+        <DialogContent className="max-w-2xl max-h-[90vh] flex flex-col">
           <DialogHeader>
             <DialogTitle>
               {selectedClient ? 'Edit Client' : 'Add New Client'}
@@ -414,132 +519,148 @@ export default function Clients() {
             </DialogDescription>
           </DialogHeader>
 
-          <div className="grid gap-4 py-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Client Name *</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) =>
-                    setFormData({ ...formData, name: e.target.value })
-                  }
-                  placeholder="ABC Corporation"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="business_type">Business Type</Label>
-                <Input
-                  id="business_type"
-                  value={formData.business_type}
-                  onChange={(e) =>
-                    setFormData({ ...formData, business_type: e.target.value })
-                  }
-                  placeholder="IT Services"
-                />
-              </div>
-            </div>
+          <ScrollArea className="flex-1 pr-4">
+            <div className="grid gap-6 py-4">
+              {/* Logo Upload */}
+              <ImageUpload
+                bucket="client-logos"
+                folder={selectedClient?.id || 'new'}
+                currentUrl={formData.logo_url}
+                onUpload={(url) => setFormData({ ...formData, logo_url: url || '' })}
+                label="Client Logo"
+              />
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="contact_person">Contact Person</Label>
-                <Input
-                  id="contact_person"
-                  value={formData.contact_person}
-                  onChange={(e) =>
-                    setFormData({ ...formData, contact_person: e.target.value })
-                  }
-                  placeholder="John Doe"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={formData.email}
-                  onChange={(e) =>
-                    setFormData({ ...formData, email: e.target.value })
-                  }
-                  placeholder="contact@abc.com"
-                />
-              </div>
-            </div>
+              <Separator />
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="phone">Phone</Label>
-                <Input
-                  id="phone"
-                  value={formData.phone}
-                  onChange={(e) =>
-                    setFormData({ ...formData, phone: e.target.value })
-                  }
-                  placeholder="+1 234 567 8900"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="address">Address</Label>
-                <Input
-                  id="address"
-                  value={formData.address}
-                  onChange={(e) =>
-                    setFormData({ ...formData, address: e.target.value })
-                  }
-                  placeholder="123 Main Street"
-                />
-              </div>
-            </div>
+              {/* Basic Info */}
+              <div className="grid gap-4">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="name">
+                      Client Name <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="name"
+                      value={formData.name}
+                      onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                      placeholder="ABC Corporation"
+                      className={formErrors.name ? 'border-destructive' : ''}
+                    />
+                    {formErrors.name && (
+                      <p className="text-xs text-destructive">{formErrors.name}</p>
+                    )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="business_type">Business Type</Label>
+                    <Input
+                      id="business_type"
+                      value={formData.business_type}
+                      onChange={(e) => setFormData({ ...formData, business_type: e.target.value })}
+                      placeholder="IT Services"
+                    />
+                  </div>
+                </div>
 
-            <div className="grid grid-cols-4 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="city">City</Label>
-                <Input
-                  id="city"
-                  value={formData.city}
-                  onChange={(e) =>
-                    setFormData({ ...formData, city: e.target.value })
-                  }
-                  placeholder="New York"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="state">State</Label>
-                <Input
-                  id="state"
-                  value={formData.state}
-                  onChange={(e) =>
-                    setFormData({ ...formData, state: e.target.value })
-                  }
-                  placeholder="NY"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="country">Country</Label>
-                <Input
-                  id="country"
-                  value={formData.country}
-                  onChange={(e) =>
-                    setFormData({ ...formData, country: e.target.value })
-                  }
-                  placeholder="USA"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="postal_code">Postal Code</Label>
-                <Input
-                  id="postal_code"
-                  value={formData.postal_code}
-                  onChange={(e) =>
-                    setFormData({ ...formData, postal_code: e.target.value })
-                  }
-                  placeholder="10001"
-                />
-              </div>
-            </div>
-          </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="contact_person">Contact Person</Label>
+                    <Input
+                      id="contact_person"
+                      value={formData.contact_person}
+                      onChange={(e) => setFormData({ ...formData, contact_person: e.target.value })}
+                      placeholder="John Doe"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="email">
+                      Email <span className="text-destructive">*</span>
+                    </Label>
+                    <Input
+                      id="email"
+                      type="email"
+                      value={formData.email}
+                      onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                      placeholder="contact@abc.com"
+                      className={formErrors.email ? 'border-destructive' : ''}
+                    />
+                    {formErrors.email && (
+                      <p className="text-xs text-destructive">{formErrors.email}</p>
+                    )}
+                  </div>
+                </div>
 
-          <DialogFooter>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="phone">Phone</Label>
+                    <Input
+                      id="phone"
+                      value={formData.phone}
+                      onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                      placeholder="+1 234 567 8900"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="address">Address</Label>
+                    <Input
+                      id="address"
+                      value={formData.address}
+                      onChange={(e) => setFormData({ ...formData, address: e.target.value })}
+                      placeholder="123 Main Street"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-4 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="city">City</Label>
+                    <Input
+                      id="city"
+                      value={formData.city}
+                      onChange={(e) => setFormData({ ...formData, city: e.target.value })}
+                      placeholder="New York"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="state">State</Label>
+                    <Input
+                      id="state"
+                      value={formData.state}
+                      onChange={(e) => setFormData({ ...formData, state: e.target.value })}
+                      placeholder="NY"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="country">Country</Label>
+                    <Input
+                      id="country"
+                      value={formData.country}
+                      onChange={(e) => setFormData({ ...formData, country: e.target.value })}
+                      placeholder="USA"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="postal_code">Postal Code</Label>
+                    <Input
+                      id="postal_code"
+                      value={formData.postal_code}
+                      onChange={(e) => setFormData({ ...formData, postal_code: e.target.value })}
+                      placeholder="10001"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <Separator />
+
+              {/* Custom Fields */}
+              <CustomFieldsEditor
+                fields={formData.custom_fields}
+                onChange={(fields) => setFormData({ ...formData, custom_fields: fields })}
+              />
+            </div>
+          </ScrollArea>
+
+          <DialogFooter className="pt-4 border-t">
             <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
               Cancel
             </Button>
@@ -571,17 +692,10 @@ export default function Clients() {
             </DialogDescription>
           </DialogHeader>
           <DialogFooter>
-            <Button
-              variant="outline"
-              onClick={() => setIsDeleteDialogOpen(false)}
-            >
+            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
               Cancel
             </Button>
-            <Button
-              variant="destructive"
-              onClick={handleDelete}
-              disabled={isSaving}
-            >
+            <Button variant="destructive" onClick={handleDelete} disabled={isSaving}>
               {isSaving ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -595,7 +709,7 @@ export default function Clients() {
         </DialogContent>
       </Dialog>
 
-      {/* Invite Dialog */}
+      {/* Invite Dialog - uses stored email */}
       {inviteClient && (
         <InviteDialog
           open={isInviteDialogOpen}
@@ -603,8 +717,19 @@ export default function Clients() {
           inviteType="client"
           targetId={inviteClient.id}
           targetName={inviteClient.name}
+          prefillEmail={inviteClient.email || undefined}
         />
       )}
+
+      {/* Bulk Import Dialog */}
+      <BulkImport
+        open={isBulkImportOpen}
+        onOpenChange={setIsBulkImportOpen}
+        entityType="client"
+        requiredFields={['name', 'email']}
+        optionalFields={['business_type', 'contact_person', 'phone', 'address', 'city', 'state', 'country', 'postal_code']}
+        onImport={handleBulkImport}
+      />
     </DashboardLayout>
   );
 }

@@ -5,8 +5,16 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { 
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import { 
   User, 
   FileText, 
@@ -16,10 +24,13 @@ import {
   Eye,
   Calendar,
   DollarSign,
-  Briefcase
+  Pencil,
+  Loader2,
+  Save
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
+import { ImageUpload } from '@/components/ImageUpload';
 import type { Tables } from '@/integrations/supabase/types';
 
 type Employee = Tables<'employees'>;
@@ -35,10 +46,27 @@ export default function EmployeePortal() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isAuthLoading, setIsAuthLoading] = useState(false);
+  
+  // Edit profile dialog state
+  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
+  const [editFormData, setEditFormData] = useState({
+    phone: '',
+    avatar_url: '',
+  });
 
   useEffect(() => {
     checkAuth();
   }, []);
+
+  useEffect(() => {
+    if (employee) {
+      setEditFormData({
+        phone: employee.phone || '',
+        avatar_url: employee.avatar_url || '',
+      });
+    }
+  }, [employee]);
 
   const checkAuth = async () => {
     try {
@@ -113,7 +141,46 @@ export default function EmployeePortal() {
     setPayslips([]);
   };
 
-  const totalNetPay = payslips.reduce((sum, p) => sum + Number(p.net_pay), 0);
+  const handleSaveProfile = async () => {
+    if (!employee) return;
+    
+    setIsSaving(true);
+    
+    try {
+      // Employees can only update personal details (phone, avatar)
+      const { error } = await supabase
+        .from('employees')
+        .update({
+          phone: editFormData.phone || null,
+          avatar_url: editFormData.avatar_url || null,
+        })
+        .eq('id', employee.id);
+
+      if (error) throw error;
+
+      setEmployee({
+        ...employee,
+        phone: editFormData.phone || null,
+        avatar_url: editFormData.avatar_url || null,
+      });
+      
+      setIsEditDialogOpen(false);
+      toast({
+        title: 'Profile updated',
+        description: 'Your profile has been updated successfully',
+      });
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Failed to update profile',
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   const latestPayslip = payslips[0];
 
   if (isLoading) {
@@ -187,9 +254,12 @@ export default function EmployeePortal() {
       <header className="sticky top-0 z-50 border-b bg-card/95 backdrop-blur">
         <div className="container flex h-16 items-center justify-between">
           <div className="flex items-center gap-4">
-            <div className="h-9 w-9 rounded-xl bg-primary flex items-center justify-center">
-              <User className="h-5 w-5 text-primary-foreground" />
-            </div>
+            <Avatar className="h-9 w-9">
+              <AvatarImage src={employee?.avatar_url || undefined} />
+              <AvatarFallback className="bg-primary text-primary-foreground">
+                {employee?.full_name?.substring(0, 2).toUpperCase()}
+              </AvatarFallback>
+            </Avatar>
             <div>
               <h1 className="text-lg font-semibold">{employee?.full_name}</h1>
               <p className="text-xs text-muted-foreground">{employee?.designation} • {employee?.department}</p>
@@ -207,9 +277,12 @@ export default function EmployeePortal() {
         <Card className="mb-6">
           <CardContent className="p-6">
             <div className="flex flex-col md:flex-row gap-6">
-              <div className="h-20 w-20 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                <User className="h-10 w-10 text-primary" />
-              </div>
+              <Avatar className="h-20 w-20 flex-shrink-0">
+                <AvatarImage src={employee?.avatar_url || undefined} />
+                <AvatarFallback className="bg-primary/10 text-primary text-2xl">
+                  {employee?.full_name?.substring(0, 2).toUpperCase()}
+                </AvatarFallback>
+              </Avatar>
               <div className="grid gap-4 flex-1 sm:grid-cols-2 lg:grid-cols-4">
                 <div>
                   <p className="text-sm text-muted-foreground">Employee ID</p>
@@ -232,6 +305,15 @@ export default function EmployeePortal() {
                   </p>
                 </div>
               </div>
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="self-start"
+                onClick={() => setIsEditDialogOpen(true)}
+              >
+                <Pencil className="h-4 w-4 mr-2" />
+                Edit Profile
+              </Button>
             </div>
           </CardContent>
         </Card>
@@ -344,6 +426,58 @@ export default function EmployeePortal() {
           </CardContent>
         </Card>
       </main>
+
+      {/* Edit Profile Dialog */}
+      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit Profile</DialogTitle>
+            <DialogDescription>
+              Update your personal details. Note: Only phone and profile picture can be edited.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            <ImageUpload
+              bucket="employee-avatars"
+              folder={employee?.id || 'new'}
+              currentUrl={editFormData.avatar_url}
+              onUpload={(url) => setEditFormData({ ...editFormData, avatar_url: url || '' })}
+              label="Profile Picture"
+              shape="circle"
+            />
+
+            <div className="space-y-2">
+              <Label htmlFor="phone">Phone Number</Label>
+              <Input
+                id="phone"
+                value={editFormData.phone}
+                onChange={(e) => setEditFormData({ ...editFormData, phone: e.target.value })}
+                placeholder="+1 234 567 8900"
+              />
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveProfile} disabled={isSaving}>
+              {isSaving ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Saving...
+                </>
+              ) : (
+                <>
+                  <Save className="mr-2 h-4 w-4" />
+                  Save Changes
+                </>
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
