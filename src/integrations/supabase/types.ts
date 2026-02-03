@@ -63,6 +63,7 @@ export type Database = {
           contact_person: string | null
           country: string | null
           created_at: string
+          custom_fields: Json | null
           email: string | null
           firm_id: string
           id: string
@@ -81,6 +82,7 @@ export type Database = {
           contact_person?: string | null
           country?: string | null
           created_at?: string
+          custom_fields?: Json | null
           email?: string | null
           firm_id: string
           id?: string
@@ -99,6 +101,7 @@ export type Database = {
           contact_person?: string | null
           country?: string | null
           created_at?: string
+          custom_fields?: Json | null
           email?: string | null
           firm_id?: string
           id?: string
@@ -160,10 +163,12 @@ export type Database = {
       }
       employees: {
         Row: {
+          avatar_url: string | null
           bank_account_number: string | null
           bank_name: string | null
           client_id: string
           created_at: string
+          custom_fields: Json | null
           date_of_joining: string | null
           department: string | null
           designation: string | null
@@ -178,10 +183,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          avatar_url?: string | null
           bank_account_number?: string | null
           bank_name?: string | null
           client_id: string
           created_at?: string
+          custom_fields?: Json | null
           date_of_joining?: string | null
           department?: string | null
           designation?: string | null
@@ -196,10 +203,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          avatar_url?: string | null
           bank_account_number?: string | null
           bank_name?: string | null
           client_id?: string
           created_at?: string
+          custom_fields?: Json | null
           date_of_joining?: string | null
           department?: string | null
           designation?: string | null

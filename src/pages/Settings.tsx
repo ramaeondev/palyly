@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -7,8 +7,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Loader2, Building2, Save } from 'lucide-react';
+import { ImageUpload } from '@/components/ImageUpload';
 
 export default function Settings() {
   const { firm, hasRole, refreshProfile } = useAuth();
@@ -24,7 +26,25 @@ export default function Settings() {
     phone: firm?.phone || '',
     email: firm?.email || '',
     website: firm?.website || '',
+    logo_url: firm?.logo_url || '',
   });
+
+  useEffect(() => {
+    if (firm) {
+      setFormData({
+        name: firm.name || '',
+        address: firm.address || '',
+        city: firm.city || '',
+        state: firm.state || '',
+        country: firm.country || '',
+        postal_code: firm.postal_code || '',
+        phone: firm.phone || '',
+        email: firm.email || '',
+        website: firm.website || '',
+        logo_url: firm.logo_url || '',
+      });
+    }
+  }, [firm]);
 
   const handleSave = async () => {
     if (!firm?.id) return;
@@ -53,6 +73,7 @@ export default function Settings() {
           phone: formData.phone || null,
           email: formData.email || null,
           website: formData.website || null,
+          logo_url: formData.logo_url || null,
         })
         .eq('id', firm.id);
 
@@ -92,11 +113,23 @@ export default function Settings() {
             </div>
             <CardDescription>
               {canEdit
-                ? 'Update your firm details that appear on payslips'
+                ? 'Update your firm details'
                 : 'View your firm details (only Super Admins can edit)'}
             </CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
+            {/* Logo Upload */}
+            <ImageUpload
+              bucket="firm-logos"
+              folder={firm?.id || 'new'}
+              currentUrl={formData.logo_url}
+              onUpload={(url) => setFormData({ ...formData, logo_url: url || '' })}
+              label="Firm Logo"
+              disabled={!canEdit}
+            />
+
+            <Separator />
+
             <div className="space-y-2">
               <Label htmlFor="name">Firm Name *</Label>
               <Input

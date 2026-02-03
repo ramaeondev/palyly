@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -10,7 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { Mail, Send, Loader2, CheckCircle2, Copy } from 'lucide-react';
+import { Mail, Send, Loader2, CheckCircle2, Copy, Info } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { v4 as uuidv4 } from 'uuid';
@@ -19,8 +19,10 @@ interface InviteDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   inviteType: 'client' | 'employee';
-  targetId: string; // client_id for client invites, employee_id for employee invites
-  targetName: string; // Display name for confirmation
+  targetId: string;
+  targetName: string;
+  prefillEmail?: string;
+  prefillName?: string;
 }
 
 export function InviteDialog({
@@ -29,6 +31,8 @@ export function InviteDialog({
   inviteType,
   targetId,
   targetName,
+  prefillEmail,
+  prefillName,
 }: InviteDialogProps) {
   const { toast } = useToast();
   const [email, setEmail] = useState('');
@@ -36,12 +40,31 @@ export function InviteDialog({
   const [isLoading, setIsLoading] = useState(false);
   const [inviteLink, setInviteLink] = useState<string | null>(null);
 
+  // Pre-fill email and name when dialog opens
+  useEffect(() => {
+    if (open) {
+      setEmail(prefillEmail || '');
+      setFullName(prefillName || '');
+    }
+  }, [open, prefillEmail, prefillName]);
+
   const handleSendInvite = async () => {
     if (!email.trim()) {
       toast({
         variant: 'destructive',
         title: 'Email required',
         description: 'Please enter an email address',
+      });
+      return;
+    }
+
+    // Validate email format
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email.trim())) {
+      toast({
+        variant: 'destructive',
+        title: 'Invalid email',
+        description: 'Please enter a valid email address',
       });
       return;
     }
@@ -168,6 +191,15 @@ export function InviteDialog({
           </div>
         ) : (
           <div className="space-y-4 py-4">
+            {prefillEmail && (
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-muted text-sm">
+                <Info className="h-4 w-4 text-muted-foreground mt-0.5 flex-shrink-0" />
+                <p className="text-muted-foreground">
+                  Using the email address stored for this {inviteType}.
+                </p>
+              </div>
+            )}
+            
             <div className="space-y-2">
               <Label htmlFor="invite-email">Email Address *</Label>
               <Input
@@ -176,6 +208,7 @@ export function InviteDialog({
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="user@example.com"
+                disabled={!!prefillEmail}
               />
             </div>
             
