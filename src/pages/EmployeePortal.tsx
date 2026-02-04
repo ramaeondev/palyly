@@ -1,12 +1,13 @@
 import { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Separator } from '@/components/ui/separator';
 import { 
   Dialog,
   DialogContent,
@@ -26,17 +27,20 @@ import {
   DollarSign,
   Pencil,
   Loader2,
-  Save
+  Save,
+  AlertTriangle
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import { ImageUpload } from '@/components/ImageUpload';
+import { GoogleLoginButton } from '@/components/auth/GoogleLoginButton';
 import type { Tables } from '@/integrations/supabase/types';
 
 type Employee = Tables<'employees'>;
 type Payslip = Tables<'payslips'>;
 
 export default function EmployeePortal() {
+  const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [employee, setEmployee] = useState<Employee | null>(null);
@@ -57,6 +61,15 @@ export default function EmployeePortal() {
 
   useEffect(() => {
     checkAuth();
+    
+    // Listen for auth state changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_IN' && session) {
+        checkAuth();
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
   useEffect(() => {
@@ -73,11 +86,37 @@ export default function EmployeePortal() {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (session) {
+        const userId = session.user.id;
+        
+        // Check if user is a FIRM user - if so, redirect to firm dashboard
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (profile) {
+          navigate('/dashboard');
+          return;
+        }
+
+        // Check if user is a CLIENT user - if so, redirect to client portal
+        const { data: clientUser } = await supabase
+          .from('client_users')
+          .select('id')
+          .eq('user_id', userId)
+          .maybeSingle();
+
+        if (clientUser) {
+          navigate('/client-portal');
+          return;
+        }
+
         // Check if user is an employee user
         const { data: employeeUser } = await supabase
           .from('employee_users')
           .select('*, employees(*)')
-          .eq('user_id', session.user.id)
+          .eq('user_id', userId)
           .single();
 
         if (employeeUser) {
@@ -204,11 +243,24 @@ export default function EmployeePortal() {
             </div>
             <CardTitle className="text-2xl">Employee Portal</CardTitle>
             <CardDescription>
-              Sign in to view your payslips
+              Secure access for employees to view payslips
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
+            <div className="space-y-4">
+              <GoogleLoginButton className="w-full" />
+              
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <Separator className="w-full" />
+                </div>
+                <div className="relative flex justify-center text-xs uppercase">
+                  <span className="bg-card px-2 text-muted-foreground">Or continue with email</span>
+                </div>
+              </div>
+            </div>
+            
+            <form onSubmit={handleLogin} className="space-y-4 mt-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input
@@ -236,13 +288,23 @@ export default function EmployeePortal() {
               </Button>
             </form>
             
-            <div className="mt-6 text-center">
-              <Link to="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                <ArrowLeft className="h-4 w-4 inline mr-1" />
-                Back to Home
-              </Link>
+            <div className="mt-4 p-3 rounded-lg bg-muted/50 flex items-start gap-2">
+              <AlertTriangle className="h-4 w-4 text-muted-foreground flex-shrink-0 mt-0.5" />
+              <p className="text-xs text-muted-foreground">
+                This portal is for invited employees only. You can only access your own payslips and profile.
+              </p>
             </div>
           </CardContent>
+          <CardFooter className="flex flex-col gap-2 text-center">
+            <div className="flex gap-4 text-sm">
+              <Link to="/client-portal" className="text-primary hover:underline">Client Portal →</Link>
+              <Link to="/auth" className="text-primary hover:underline">Firm Login →</Link>
+            </div>
+            <Link to="/" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+              <ArrowLeft className="h-4 w-4 inline mr-1" />
+              Back to Home
+            </Link>
+          </CardFooter>
         </Card>
       </div>
     );

@@ -383,13 +383,20 @@ export default function Landing() {
               <span className="text-xl font-bold">Payly</span>
             </div>
             <div className="flex items-center gap-6 text-sm text-muted-foreground">
-              <a href="#" className="hover:text-foreground transition-colors">Privacy</a>
-              <a href="#" className="hover:text-foreground transition-colors">Terms</a>
+              <Link to="/privacy" className="hover:text-foreground transition-colors">Privacy</Link>
+              <Link to="/terms" className="hover:text-foreground transition-colors">Terms</Link>
               <a href="#" className="hover:text-foreground transition-colors">Support</a>
             </div>
             <p className="text-sm text-muted-foreground">
-              © 2026 Payly. All rights reserved.
+              © 2026 Payly. Free & Open Source.
             </p>
+          </div>
+          
+          <div className="mt-8 pt-6 border-t text-center">
+            <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-success/10 text-success text-sm">
+              <Shield className="h-4 w-4" />
+              Privacy-First • Open Source • Your Data, Your Control
+            </div>
           </div>
         </div>
       </footer>
