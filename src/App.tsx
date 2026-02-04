@@ -4,6 +4,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "@/contexts/AuthContext";
+import { PortalGuard } from "@/components/auth/PortalGuard";
 import Landing from "./pages/Landing";
 import Demo from "./pages/Demo";
 import Auth from "./pages/Auth";
@@ -16,6 +17,8 @@ import Payslips from "./pages/Payslips";
 import ClientPortal from "./pages/ClientPortal";
 import EmployeePortal from "./pages/EmployeePortal";
 import AcceptInvite from "./pages/AcceptInvite";
+import Terms from "./pages/Terms";
+import Privacy from "./pages/Privacy";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -33,18 +36,44 @@ const App = () => (
             <Route path="/demo" element={<Demo />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/accept-invite" element={<AcceptInvite />} />
+            <Route path="/terms" element={<Terms />} />
+            <Route path="/privacy" element={<Privacy />} />
             
-            {/* Portal routes */}
+            {/* Portal routes - strictly isolated */}
             <Route path="/client-portal" element={<ClientPortal />} />
             <Route path="/employee-portal" element={<EmployeePortal />} />
             
-            {/* Firm dashboard routes */}
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/clients" element={<Clients />} />
-            <Route path="/clients/:clientId/employees" element={<ClientEmployees />} />
-            <Route path="/users" element={<Users />} />
-            <Route path="/settings" element={<Settings />} />
-            <Route path="/payslips" element={<Payslips />} />
+            {/* Firm dashboard routes - protected by PortalGuard */}
+            <Route path="/dashboard" element={
+              <PortalGuard allowedPortal="firm">
+                <Dashboard />
+              </PortalGuard>
+            } />
+            <Route path="/clients" element={
+              <PortalGuard allowedPortal="firm">
+                <Clients />
+              </PortalGuard>
+            } />
+            <Route path="/clients/:clientId/employees" element={
+              <PortalGuard allowedPortal="firm">
+                <ClientEmployees />
+              </PortalGuard>
+            } />
+            <Route path="/users" element={
+              <PortalGuard allowedPortal="firm">
+                <Users />
+              </PortalGuard>
+            } />
+            <Route path="/settings" element={
+              <PortalGuard allowedPortal="firm">
+                <Settings />
+              </PortalGuard>
+            } />
+            <Route path="/payslips" element={
+              <PortalGuard allowedPortal="firm">
+                <Payslips />
+              </PortalGuard>
+            } />
             
             <Route path="*" element={<NotFound />} />
           </Routes>

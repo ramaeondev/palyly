@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,6 +9,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Building2, User, Mail, Lock, Loader2 } from 'lucide-react';
 import { z } from 'zod';
+import { GoogleLoginButton } from '@/components/auth/GoogleLoginButton';
+import { Separator } from '@/components/ui/separator';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -160,13 +162,26 @@ export default function Auth() {
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <Building2 className="h-6 w-6 text-primary" />
           </div>
-          <CardTitle className="text-2xl font-bold">Payslip Generator</CardTitle>
+          <CardTitle className="text-2xl font-bold">Payly - Firm Portal</CardTitle>
           <CardDescription>
-            Manage payslips for your firm's clients
+            Secure access for firm administrators
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs value={activeTab} onValueChange={setActiveTab}>
+          <div className="space-y-4">
+            <GoogleLoginButton className="w-full" />
+            
+            <div className="relative">
+              <div className="absolute inset-0 flex items-center">
+                <Separator className="w-full" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">Or continue with email</span>
+              </div>
+            </div>
+          </div>
+          
+          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login">Login</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>
@@ -329,8 +344,17 @@ export default function Auth() {
             </TabsContent>
           </Tabs>
         </CardContent>
-        <CardFooter className="text-center text-sm text-muted-foreground">
-          By continuing, you agree to our Terms of Service and Privacy Policy.
+        <CardFooter className="flex flex-col gap-2 text-center text-sm text-muted-foreground">
+          <p>
+            By continuing, you agree to our{' '}
+            <Link to="/terms" className="text-primary hover:underline">Terms of Service</Link>
+            {' '}and{' '}
+            <Link to="/privacy" className="text-primary hover:underline">Privacy Policy</Link>.
+          </p>
+          <div className="flex gap-4 mt-2">
+            <Link to="/client-portal" className="text-primary hover:underline">Client Portal →</Link>
+            <Link to="/employee-portal" className="text-primary hover:underline">Employee Portal →</Link>
+          </div>
         </CardFooter>
       </Card>
     </div>
