@@ -10,7 +10,11 @@ import {
   Globe,
   ArrowRight,
   CheckCircle2,
-  Sparkles
+  Sparkles,
+  Lock,
+  Server,
+  Code,
+  FolderGit
 } from 'lucide-react';
 
 export default function Landing() {
@@ -47,26 +51,7 @@ export default function Landing() {
     }
   ];
 
-  const pricingPlans = [
-    {
-      name: 'Starter',
-      price: 'Free',
-      description: 'Perfect for trying out Payly',
-      features: ['Up to 5 employees', 'Basic templates', 'PDF downloads', 'Email support']
-    },
-    {
-      name: 'Professional',
-      price: '$29',
-      description: 'For growing businesses',
-      features: ['Unlimited employees', 'All templates', 'Client & Employee portals', 'Priority support', 'Bulk generation']
-    },
-    {
-      name: 'Enterprise',
-      price: 'Custom',
-      description: 'For large organizations',
-      features: ['Everything in Pro', 'Custom branding', 'API access', 'Dedicated support', 'On-premise option']
-    }
-  ];
+
 
   return (
     <div className="min-h-screen bg-background">
@@ -83,7 +68,7 @@ export default function Landing() {
           </div>
           <div className="hidden md:flex items-center gap-6">
             <a href="#features" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Features</a>
-            <a href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</a>
+            <a href="#deployment" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Deployment</a>
             <Link to="/client-portal" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Client Portal</Link>
             <Link to="/employee-portal" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Employee Portal</Link>
           </div>
@@ -286,55 +271,233 @@ export default function Landing() {
         </div>
       </section>
 
-      {/* Pricing Section */}
-      <section id="pricing" className="py-24 bg-muted/30">
+      {/* Security, Privacy & Deployment Section */}
+      <section id="deployment" className="py-24">
         <div className="container">
-          <div className="text-center mb-16">
+          <div className="text-center mb-12">
             <h2 className="text-3xl md:text-4xl font-bold mb-4">
-              Simple, Transparent Pricing
+              Security, Privacy & Deployment Options
             </h2>
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-              Start free, upgrade when you're ready. No hidden fees.
+            <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+              Payly is privacy-first, open-source, and designed so firms can choose the deployment model that meets their compliance needs — Managed Cloud or On‑Premise.
             </p>
           </div>
-          
-          <div className="grid md:grid-cols-3 gap-8 max-w-5xl mx-auto">
-            {pricingPlans.map((plan, index) => (
-              <Card 
-                key={plan.name} 
-                className={`card-hover border-0 ${index === 1 ? 'ring-2 ring-primary shadow-xl' : 'shadow-sm'}`}
-              >
-                <CardContent className="p-6">
-                  {index === 1 && (
-                    <div className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-primary text-primary-foreground text-xs font-medium mb-4">
-                      Most Popular
+
+          <div className="grid md:grid-cols-3 gap-6">
+            <Card className="card-hover border-0 bg-card shadow-sm">
+              <CardContent className="p-6">
+                <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
+                  <Lock className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2">Security & Privacy</h3>
+                <p className="text-muted-foreground mb-3">
+                  Role-based access, strong encryption in transit and at rest, audit logs, and privacy-first defaults—because your employees' data matters.
+                </p>
+                <ul className="text-sm space-y-2">
+                  <li>Fine-grained RBAC and permission controls</li>
+                  <li>End-to-end encryption and audit trails</li>
+                  <li>Privacy by default and data minimization</li>
+                </ul>
+              </CardContent>
+            </Card>
+
+            <Card className="card-hover border-0 bg-card shadow-sm">
+              <CardContent className="p-6">
+                <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
+                  <Server className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2">Flexible Deployment</h3>
+                <p className="text-muted-foreground mb-3">
+                  Cloud or on-premise — you decide. Environment-based configuration, no hard ties to a single provider, and full data ownership for self-hosted deployments.
+                </p>
+                <ul className="text-sm space-y-2">
+                  <li>Managed Cloud for convenience and security</li>
+                  <li>On-premise for complete data ownership and compliance</li>
+                  <li>Environment-driven configs & 12-factor friendly</li>
+                </ul>
+              </CardContent>
+            </Card>
+
+            <Card className="card-hover border-0 bg-card shadow-sm">
+              <CardContent className="p-6">
+                <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
+                  <Code className="h-6 w-6 text-primary" />
+                </div>
+                <h3 className="text-xl font-semibold mb-2">Open & Trustworthy</h3>
+                <p className="text-muted-foreground mb-3">
+                  Always free and permanently open-source. We prioritize public auditability and community governance so firms can trust the platform that handles their payroll.
+                </p>
+                <ul className="text-sm space-y-2 mb-4">
+                  <li>Publicly auditable architecture and regular security reports</li>
+                  <li>Community-friendly code layout and CONTRIBUTING guide</li>
+                  <li>No dark patterns or vendor lock-in — your data, your choice</li>
+                </ul>
+                <div className="flex gap-3">
+                  <Link to="/docs/contributing">
+                    <Button variant="outline">Contribution Guide</Button>
+                  </Link>
+                  <Link to="/docs/audits" className="ml-2">
+                    <Button className="btn-gradient">Audit Reports</Button>
+                  </Link>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="mt-8 text-center">
+            <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-success/10 text-success text-sm">
+              <Shield className="h-4 w-4" />
+              <strong>Privacy-First • Open-Source • Always Free</strong>
+            </div>
+          </div>
+
+          {/* Open Source & Community Subsection */}
+          <div className="mt-12 max-w-4xl mx-auto text-center">
+            <h3 className="text-2xl font-semibold mb-3">Open Source & Community</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Payly is built in the open — public architecture, transparent security practices, and a welcoming contribution process. We avoid vendor lock-in and prioritize clear governance so organizations can rely on the software for the long term.
+            </p>
+            <div className="grid md:grid-cols-4 gap-6 mt-6">
+              <Card className="p-6 rounded-2xl bg-card shadow-sm border hover:shadow-md transition">
+                <CardContent className="p-0">
+                  <div className="flex items-start gap-4">
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Sparkles className="h-5 w-5 text-primary" />
                     </div>
-                  )}
-                  <h3 className="text-xl font-semibold">{plan.name}</h3>
-                  <div className="mt-2 mb-4">
-                    <span className="text-4xl font-bold">{plan.price}</span>
-                    {plan.price !== 'Custom' && plan.price !== 'Free' && (
-                      <span className="text-muted-foreground">/month</span>
-                    )}
+                    <div>
+                      <p className="font-semibold">Always Free</p>
+                      <p className="text-sm text-muted-foreground mt-1">Payly is free to use forever — no hidden fees, ever.</p>
+                    </div>
                   </div>
-                  <p className="text-sm text-muted-foreground mb-6">{plan.description}</p>
-                  <ul className="space-y-3 mb-6">
-                    {plan.features.map((feature) => (
-                      <li key={feature} className="flex items-center gap-2 text-sm">
-                        <CheckCircle2 className="h-4 w-4 text-success flex-shrink-0" />
-                        {feature}
-                      </li>
-                    ))}
-                  </ul>
-                  <Button 
-                    className={`w-full ${index === 1 ? 'btn-gradient' : ''}`}
-                    variant={index === 1 ? 'default' : 'outline'}
-                  >
-                    {plan.price === 'Custom' ? 'Contact Sales' : 'Get Started'}
-                  </Button>
                 </CardContent>
               </Card>
-            ))}
+
+              <Card className="p-6 rounded-2xl bg-card shadow-sm border hover:shadow-md transition">
+                <CardContent className="p-0">
+                  <div className="flex items-start gap-4">
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Code className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-semibold">Always Open-Source</p>
+                      <p className="text-sm text-muted-foreground mt-1">Public architecture, code, and audit reports so anyone can verify and improve the project.</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="p-6 rounded-2xl bg-card shadow-sm border hover:shadow-md transition">
+                <CardContent className="p-0">
+                  <div className="flex items-start gap-4">
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Users className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-semibold">Community Contributions</p>
+                      <p className="text-sm text-muted-foreground mt-1">Welcoming CONTRIBUTING guide, issue templates, and an inclusive review process.</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card className="p-6 rounded-2xl bg-card shadow-sm border hover:shadow-md transition">
+                <CardContent className="p-0">
+                  <div className="flex items-start gap-4">
+                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                      <Server className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="font-semibold">Cloud & On‑Premise</p>
+                      <p className="text-sm text-muted-foreground mt-1">Designed for both managed cloud and self‑hosted deployments — full data ownership and flexible compliance.</p>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+
+            <div className="mt-6 flex justify-center gap-3">
+              <Link to="/docs/contributing">
+                <Button variant="outline">Read Contribution Guide</Button>
+              </Link>
+              <Link to="/docs/audits">
+                <Button className="btn-gradient">See Audit Reports</Button>
+              </Link>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Deployment Options Section */}
+      <section id="deployment-options" className="py-24 bg-muted/30">
+        <div className="container">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold mb-4">Deployment Options</h2>
+            <p className="text-lg text-muted-foreground max-w-3xl mx-auto">
+              Choose the model that fits your security and compliance needs. Payly supports Managed Cloud for convenience and On‑Premise for full data ownership.
+            </p>
+          </div>
+
+          <div className="grid md:grid-cols-2 gap-8 max-w-5xl mx-auto">
+            <Card className="card-hover border-0 shadow-sm">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mt-1">
+                    <Server className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold mb-2">Managed Cloud</h3>
+                    <p className="text-muted-foreground mb-3">We manage hosting, security, updates, and backups so your team can focus on payroll.</p>
+                    <ul className="text-sm space-y-2 mb-4">
+                      <li>Fully managed updates & security</li>
+                      <li>Hosted across redundant regions (GDPR-aware)</li>
+                      <li>24/7 monitoring, automatic backups, and support</li>
+                    </ul>
+                    <div className="flex gap-3">
+                      <Link to="/docs/deployment">
+                        <Button variant="outline">Learn More</Button>
+                      </Link>
+                      <a href="#contact" className="ml-2">
+                        <Button className="btn-gradient">Get Managed</Button>
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <Card className="card-hover border-0 shadow-sm">
+              <CardContent className="p-6">
+                <div className="flex items-start gap-4">
+                  <div className="h-12 w-12 rounded-xl bg-primary/10 flex items-center justify-center mt-1">
+                    <FolderGit className="h-6 w-6 text-primary" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-semibold mb-2">On‑Premise (Self‑Hosted)</h3>
+                    <p className="text-muted-foreground mb-3">Deploy inside your environment for complete data ownership, control, and compliance.
+                    </p>
+                    <ul className="text-sm space-y-2 mb-4">
+                      <li>Full data ownership and local storage</li>
+                      <li>No hard dependency on a single cloud provider</li>
+                      <li>Environment-first configuration & 12-factor friendly</li>
+                    </ul>
+                    <div className="flex gap-3">
+                      <Link to="/docs/deployment#self-hosting">
+                        <Button variant="outline">Self‑Host Docs</Button>
+                      </Link>
+                      <a href="#contact" className="ml-2">
+                        <Button className="btn-gradient">Contact Sales</Button>
+                      </a>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          <div className="mt-8 text-center max-w-3xl mx-auto">
+            <p className="text-sm text-muted-foreground">
+              Need help choosing? Our team can help you evaluate compliance and security needs and recommend the right deployment model for your organization.
+            </p>
           </div>
         </div>
       </section>
