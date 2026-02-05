@@ -9,8 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useToast } from '@/hooks/use-toast';
 import { Building2, User, Mail, Lock, Loader2 } from 'lucide-react';
 import { z } from 'zod';
-import { GoogleLoginButton } from '@/components/auth/GoogleLoginButton';
-import { Separator } from '@/components/ui/separator';
+import { isFeatureEnabled } from '@/lib/feature-flags';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -168,20 +167,7 @@ export default function Auth() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            <GoogleLoginButton className="w-full" />
-            
-            <div className="relative">
-              <div className="absolute inset-0 flex items-center">
-                <Separator className="w-full" />
-              </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">Or continue with email</span>
-              </div>
-            </div>
-          </div>
-          
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="mt-4">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="login">Login</TabsTrigger>
               <TabsTrigger value="signup">Sign Up</TabsTrigger>

@@ -31,7 +31,8 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { useToast } from '@/hooks/use-toast';
-import { Plus, Search, Pencil, Trash2, Users, Loader2, Shield } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2, Users, Loader2, Shield, Mail, UserPlus } from 'lucide-react';
+import { v4 as uuidv4 } from 'uuid';
 
 interface User {
   id: string;
@@ -43,11 +44,22 @@ interface User {
   avatar_url: string | null;
   is_active: boolean;
   created_at: string;
-  role?: 'super_admin' | 'admin' | 'user';
+  role?: 'super_admin' | 'admin' | 'user' | 'preparer' | 'approver_l1' | 'approver_l2';
 }
 
+type AppRole = 'super_admin' | 'admin' | 'user' | 'preparer' | 'approver_l1' | 'approver_l2';
+
+const ROLE_OPTIONS: { value: AppRole; label: string }[] = [
+  { value: 'super_admin', label: 'Super Admin' },
+  { value: 'admin', label: 'Admin' },
+  { value: 'preparer', label: 'Preparer' },
+  { value: 'approver_l1', label: 'Approver L1' },
+  { value: 'approver_l2', label: 'Approver L2' },
+  { value: 'user', label: 'User' },
+];
+
 export default function UsersPage() {
-  const { firm, hasRole, user: currentUser } = useAuth();
+  const { firm, hasRole, user: currentUser, profile } = useAuth();
   const { toast } = useToast();
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
@@ -56,6 +68,13 @@ export default function UsersPage() {
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [selectedRole, setSelectedRole] = useState<string>('');
   const [isSaving, setIsSaving] = useState(false);
+  
+  // Invite dialog state
+  const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
+  const [inviteEmail, setInviteEmail] = useState('');
+  const [inviteFullName, setInviteFullName] = useState('');
+  const [inviteRole, setInviteRole] = useState<AppRole>('user');
+  const [isInviting, setIsInviting] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -162,6 +181,10 @@ export default function UsersPage() {
         return 'default';
       case 'admin':
         return 'secondary';
+      case 'preparer':
+      case 'approver_l1':
+      case 'approver_l2':
+        return 'outline';
       default:
         return 'outline';
     }
@@ -173,8 +196,69 @@ export default function UsersPage() {
         return 'Super Admin';
       case 'admin':
         return 'Admin';
+      case 'preparer':
+        return 'Preparer';
+      case 'approver_l1':
+        return 'Approver L1';
+      case 'approver_l2':
+        return 'Approver L2';
       default:
         return 'User';
+    }
+  };
+
+  const handleInviteFirmUser = async () => {
+    if (!inviteEmail || !inviteFullName) {
+      toast({
+        variant: 'destructive',
+        title: 'Validation Error',
+        description: 'Please fill in all required fields',
+      });
+      return;
+    }
+
+    setIsInviting(true);
+
+    try {
+      const token = uuidv4();
+      
+      // Create invitation record
+      const { error } = await supabase.from('invitations').insert({
+        email: inviteEmail,
+        full_name: inviteFullName,
+        token,
+        invite_type: 'firm_user' as any, // Cast to any since types.ts hasn't been regenerated yet
+        invited_by: currentUser?.id,
+      });
+
+      if (error) throw error;
+
+      // Generate invite link
+      const inviteLink = `${window.location.origin}/accept-invite?token=${token}&role=${inviteRole}`;
+
+      toast({
+        title: 'Invitation Created',
+        description: (
+          <div className="mt-2 space-y-2">
+            <p className="text-sm">Share this link with the user:</p>
+            <code className="block p-2 text-xs bg-muted rounded break-all">{inviteLink}</code>
+          </div>
+        ),
+      });
+
+      setIsInviteDialogOpen(false);
+      setInviteEmail('');
+      setInviteFullName('');
+      setInviteRole('user');
+    } catch (error: unknown) {
+      console.error('Error creating invitation:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: error instanceof Error ? error.message : 'Failed to create invitation',
+      });
+    } finally {
+      setIsInviting(false);
     }
   };
 
@@ -198,6 +282,12 @@ export default function UsersPage() {
               className="pl-10"
             />
           </div>
+          {hasRole('super_admin') && (
+            <Button onClick={() => setIsInviteDialogOpen(true)}>
+              <UserPlus className="h-4 w-4 mr-2" />
+              Invite User
+            </Button>
+          )}
         </div>
 
         {/* Users Table */}
@@ -300,9 +390,11 @@ export default function UsersPage() {
                 <SelectValue placeholder="Select a role" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="super_admin">Super Admin</SelectItem>
-                <SelectItem value="admin">Admin</SelectItem>
-                <SelectItem value="user">User</SelectItem>
+                {ROLE_OPTIONS.map(role => (
+                  <SelectItem key={role.value} value={role.value}>
+                    {role.label}
+                  </SelectItem>
+                ))}
               </SelectContent>
             </Select>
           </div>
@@ -319,6 +411,79 @@ export default function UsersPage() {
                 </>
               ) : (
                 'Update Role'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Invite Firm User Dialog */}
+      <Dialog open={isInviteDialogOpen} onOpenChange={setIsInviteDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Invite Firm User</DialogTitle>
+            <DialogDescription>
+              Send an invitation to add a new user to your firm
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="invite-name">Full Name *</Label>
+              <Input
+                id="invite-name"
+                placeholder="John Doe"
+                value={inviteFullName}
+                onChange={(e) => setInviteFullName(e.target.value)}
+              />
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="invite-email">Email Address *</Label>
+              <Input
+                id="invite-email"
+                type="email"
+                placeholder="john@example.com"
+                value={inviteEmail}
+                onChange={(e) => setInviteEmail(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="invite-role">Role</Label>
+              <Select value={inviteRole} onValueChange={(v) => setInviteRole(v as AppRole)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a role" />
+                </SelectTrigger>
+                <SelectContent>
+                  {ROLE_OPTIONS.filter(r => r.value !== 'super_admin').map(role => (
+                    <SelectItem key={role.value} value={role.value}>
+                      {role.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                The user will be assigned this role after they accept the invitation
+              </p>
+            </div>
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsInviteDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleInviteFirmUser} disabled={isInviting}>
+              {isInviting ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Sending...
+                </>
+              ) : (
+                <>
+                  <Mail className="mr-2 h-4 w-4" />
+                  Create Invitation
+                </>
               )}
             </Button>
           </DialogFooter>

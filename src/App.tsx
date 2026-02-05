@@ -15,6 +15,8 @@ import ClientEmployees from "./pages/ClientEmployees";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import Payslips from "./pages/Payslips";
+import Payroll from "./pages/Payroll";
+import Permissions from "./pages/Permissions";
 import ClientPortal from "./pages/ClientPortal";
 import EmployeePortal from "./pages/EmployeePortal";
 import AcceptInvite from "./pages/AcceptInvite";
@@ -74,6 +76,16 @@ const App = () => (
             <Route path="/payslips" element={
               <PortalGuard allowedPortal="firm">
                 <Payslips />
+              </PortalGuard>
+            } />
+            <Route path="/payroll" element={
+              <PortalGuard allowedPortal="firm">
+                <Payroll />
+              </PortalGuard>
+            } />
+            <Route path="/permissions" element={
+              <PortalGuard allowedPortal="firm">
+                <Permissions />
               </PortalGuard>
             } />
             

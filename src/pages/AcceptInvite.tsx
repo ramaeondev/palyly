@@ -10,7 +10,8 @@ import {
   XCircle, 
   FileText,
   Building2,
-  User,
+  User, 
+  Users,
   Lock
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,7 +19,7 @@ import { toast } from '@/hooks/use-toast';
 
 interface InviteData {
   id: string;
-  invite_type: 'client' | 'employee';
+  invite_type: 'client' | 'employee' | 'firm_user';
   email: string;
   full_name: string | null;
   status: string;
@@ -31,6 +32,7 @@ export default function AcceptInvite() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token');
+  const roleParam = searchParams.get('role');
   
   const [isLoading, setIsLoading] = useState(true);
   const [invite, setInvite] = useState<InviteData | null>(null);
@@ -141,6 +143,50 @@ export default function AcceptInvite() {
             });
 
           if (employeeUserError) throw employeeUserError;
+        } else if (invite.invite_type === 'firm_user') {
+          // For firm users, the profile will be created by the database trigger
+          // We need to get the firm_id from the inviter and create profile + role
+          
+          // First get the inviter's firm_id
+          const { data: inviterProfile } = await supabase
+            .from('invitations')
+            .select('invited_by')
+            .eq('id', invite.id)
+            .single();
+          
+          if (inviterProfile?.invited_by) {
+            const { data: firmData } = await supabase
+              .from('profiles')
+              .select('firm_id')
+              .eq('user_id', inviterProfile.invited_by)
+              .single();
+            
+            if (firmData?.firm_id) {
+              // Create profile for the new firm user
+              const { error: profileError } = await supabase
+                .from('profiles')
+                .insert({
+                  user_id: authData.user.id,
+                  firm_id: firmData.firm_id,
+                  email: invite.email,
+                  full_name: invite.full_name || 'User',
+                });
+              
+              if (profileError) throw profileError;
+              
+              // Assign the role if specified
+              if (roleParam) {
+                const { error: roleError } = await supabase
+                  .from('user_roles')
+                  .insert({
+                    user_id: authData.user.id,
+                    role: roleParam as any, // Cast since types may not be updated yet
+                  });
+                
+                if (roleError) console.error('Error assigning role:', roleError);
+              }
+            }
+          }
         }
 
         // Update invitation status
@@ -155,7 +201,11 @@ export default function AcceptInvite() {
         });
 
         // Redirect to appropriate portal
-        navigate(invite.invite_type === 'client' ? '/client-portal' : '/employee-portal');
+        if (invite.invite_type === 'firm_user') {
+          navigate('/auth');
+        } else {
+          navigate(invite.invite_type === 'client' ? '/client-portal' : '/employee-portal');
+        }
       }
     } catch (err: unknown) {
       toast({
@@ -206,7 +256,9 @@ export default function AcceptInvite() {
       <Card className="w-full max-w-md">
         <CardHeader className="text-center">
           <div className="h-12 w-12 rounded-xl bg-primary flex items-center justify-center mx-auto mb-4">
-            {invite?.invite_type === 'client' ? (
+            {invite?.invite_type === 'firm_user' ? (
+              <Users className="h-6 w-6 text-primary-foreground" />
+            ) : invite?.invite_type === 'client' ? (
               <Building2 className="h-6 w-6 text-primary-foreground" />
             ) : (
               <User className="h-6 w-6 text-primary-foreground" />
@@ -214,7 +266,10 @@ export default function AcceptInvite() {
           </div>
           <CardTitle className="text-2xl">Set Your Password</CardTitle>
           <CardDescription>
-            You've been invited to join the {invite?.invite_type === 'client' ? 'Client' : 'Employee'} Portal
+            You've been invited to join the {
+              invite?.invite_type === 'firm_user' ? 'Firm' : 
+              invite?.invite_type === 'client' ? 'Client' : 'Employee'
+            } Portal
           </CardDescription>
         </CardHeader>
         <CardContent>

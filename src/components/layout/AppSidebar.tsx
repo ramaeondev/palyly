@@ -8,6 +8,8 @@ import {
   LayoutDashboard,
   LogOut,
   ChevronDown,
+  Shield,
+  Calendar,
 } from 'lucide-react';
 import { NavLink } from '@/components/NavLink';
 import { useAuth } from '@/contexts/AuthContext';
@@ -36,11 +38,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 const mainNavItems = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
   { title: 'Clients', url: '/clients', icon: Building2 },
+  { title: 'Payroll', url: '/payroll', icon: Calendar },
   { title: 'Generate Payslip', url: '/payslips', icon: FileText },
 ];
 
 const adminNavItems = [
   { title: 'Users', url: '/users', icon: UserCog },
+  { title: 'Permissions', url: '/permissions', icon: Shield },
   { title: 'Firm Settings', url: '/settings', icon: Settings },
 ];
 
