@@ -8,7 +8,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Separator } from '@/components/ui/separator';
 import { 
   Building2, 
   Users, 
@@ -22,7 +21,6 @@ import {
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
-import { GoogleLoginButton } from '@/components/auth/GoogleLoginButton';
 import type { Tables } from '@/integrations/supabase/types';
 
 type Employee = Tables<'employees'>;
@@ -200,20 +198,7 @@ export default function ClientPortal() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
-              <GoogleLoginButton className="w-full" />
-              
-              <div className="relative">
-                <div className="absolute inset-0 flex items-center">
-                  <Separator className="w-full" />
-                </div>
-                <div className="relative flex justify-center text-xs uppercase">
-                  <span className="bg-card px-2 text-muted-foreground">Or continue with email</span>
-                </div>
-              </div>
-            </div>
-            
-            <form onSubmit={handleLogin} className="space-y-4 mt-4">
+            <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-2">
                 <Label htmlFor="email">Email</Label>
                 <Input

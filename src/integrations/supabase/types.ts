@@ -123,6 +123,63 @@ export type Database = {
           },
         ]
       }
+      employee_salary_components: {
+        Row: {
+          amount: number
+          component_type: Database["public"]["Enums"]["salary_component_type"]
+          created_at: string
+          employee_id: string
+          id: string
+          is_active: boolean
+          is_percentage: boolean
+          name: string
+          percentage_of: string | null
+          template_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          amount?: number
+          component_type: Database["public"]["Enums"]["salary_component_type"]
+          created_at?: string
+          employee_id: string
+          id?: string
+          is_active?: boolean
+          is_percentage?: boolean
+          name: string
+          percentage_of?: string | null
+          template_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          amount?: number
+          component_type?: Database["public"]["Enums"]["salary_component_type"]
+          created_at?: string
+          employee_id?: string
+          id?: string
+          is_active?: boolean
+          is_percentage?: boolean
+          name?: string
+          percentage_of?: string | null
+          template_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_salary_components_employee_id_fkey"
+            columns: ["employee_id"]
+            isOneToOne: false
+            referencedRelation: "employees"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_salary_components_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "salary_component_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       employee_users: {
         Row: {
           created_at: string
@@ -340,6 +397,106 @@ export type Database = {
           },
         ]
       }
+      payroll_runs: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          client_id: string
+          created_at: string
+          created_by: string | null
+          id: string
+          notes: string | null
+          pay_date: string
+          pay_period: string
+          published_at: string | null
+          published_by: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          status: Database["public"]["Enums"]["payroll_status"]
+          updated_at: string
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          client_id: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          pay_date: string
+          pay_period: string
+          published_at?: string | null
+          published_by?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["payroll_status"]
+          updated_at?: string
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          client_id?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          notes?: string | null
+          pay_date?: string
+          pay_period?: string
+          published_at?: string | null
+          published_by?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          status?: Database["public"]["Enums"]["payroll_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_runs_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payroll_workflow_history: {
+        Row: {
+          changed_by: string
+          created_at: string
+          from_status: Database["public"]["Enums"]["payroll_status"] | null
+          id: string
+          notes: string | null
+          payroll_run_id: string
+          to_status: Database["public"]["Enums"]["payroll_status"]
+        }
+        Insert: {
+          changed_by: string
+          created_at?: string
+          from_status?: Database["public"]["Enums"]["payroll_status"] | null
+          id?: string
+          notes?: string | null
+          payroll_run_id: string
+          to_status: Database["public"]["Enums"]["payroll_status"]
+        }
+        Update: {
+          changed_by?: string
+          created_at?: string
+          from_status?: Database["public"]["Enums"]["payroll_status"] | null
+          id?: string
+          notes?: string | null
+          payroll_run_id?: string
+          to_status?: Database["public"]["Enums"]["payroll_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payroll_workflow_history_payroll_run_id_fkey"
+            columns: ["payroll_run_id"]
+            isOneToOne: false
+            referencedRelation: "payroll_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       payslips: {
         Row: {
           basic_salary: number
@@ -452,6 +609,109 @@ export type Database = {
           },
         ]
       }
+      role_permissions: {
+        Row: {
+          can_approve: boolean
+          can_create: boolean
+          can_delete: boolean
+          can_edit: boolean
+          can_publish: boolean
+          can_view: boolean
+          created_at: string
+          firm_id: string
+          id: string
+          resource: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at: string
+        }
+        Insert: {
+          can_approve?: boolean
+          can_create?: boolean
+          can_delete?: boolean
+          can_edit?: boolean
+          can_publish?: boolean
+          can_view?: boolean
+          created_at?: string
+          firm_id: string
+          id?: string
+          resource: string
+          role: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+        }
+        Update: {
+          can_approve?: boolean
+          can_create?: boolean
+          can_delete?: boolean
+          can_edit?: boolean
+          can_publish?: boolean
+          can_view?: boolean
+          created_at?: string
+          firm_id?: string
+          id?: string
+          resource?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "role_permissions_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      salary_component_templates: {
+        Row: {
+          client_id: string
+          component_type: Database["public"]["Enums"]["salary_component_type"]
+          created_at: string
+          default_amount: number
+          id: string
+          is_active: boolean
+          is_percentage: boolean
+          is_recurring: boolean
+          name: string
+          percentage_of: string | null
+          updated_at: string
+        }
+        Insert: {
+          client_id: string
+          component_type: Database["public"]["Enums"]["salary_component_type"]
+          created_at?: string
+          default_amount?: number
+          id?: string
+          is_active?: boolean
+          is_percentage?: boolean
+          is_recurring?: boolean
+          name: string
+          percentage_of?: string | null
+          updated_at?: string
+        }
+        Update: {
+          client_id?: string
+          component_type?: Database["public"]["Enums"]["salary_component_type"]
+          created_at?: string
+          default_amount?: number
+          id?: string
+          is_active?: boolean
+          is_percentage?: boolean
+          is_recurring?: boolean
+          name?: string
+          percentage_of?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "salary_component_templates_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "clients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -495,9 +755,17 @@ export type Database = {
       is_employee_user: { Args: { _user_id: string }; Returns: boolean }
     }
     Enums: {
-      app_role: "super_admin" | "admin" | "user"
+      app_role:
+        | "super_admin"
+        | "admin"
+        | "user"
+        | "preparer"
+        | "approver_l1"
+        | "approver_l2"
       invite_status: "pending" | "accepted" | "expired" | "cancelled"
-      invite_type: "client" | "employee"
+      invite_type: "client" | "employee" | "firm_user"
+      payroll_status: "draft" | "review" | "approved" | "published"
+      salary_component_type: "earning" | "deduction"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -625,9 +893,18 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["super_admin", "admin", "user"],
+      app_role: [
+        "super_admin",
+        "admin",
+        "user",
+        "preparer",
+        "approver_l1",
+        "approver_l2",
+      ],
       invite_status: ["pending", "accepted", "expired", "cancelled"],
-      invite_type: ["client", "employee"],
+      invite_type: ["client", "employee", "firm_user"],
+      payroll_status: ["draft", "review", "approved", "published"],
+      salary_component_type: ["earning", "deduction"],
     },
   },
 } as const

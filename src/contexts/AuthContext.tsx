@@ -16,7 +16,7 @@ interface Profile {
 interface UserRole {
   id: string;
   user_id: string;
-  role: 'super_admin' | 'admin' | 'user';
+  role: 'super_admin' | 'admin' | 'user' | 'preparer' | 'approver_l1' | 'approver_l2';
 }
 
 interface Firm {
@@ -43,7 +43,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, fullName: string, firmName: string) => Promise<{ error: Error | null }>;
   signIn: (email: string, password: string) => Promise<{ error: Error | null }>;
   signOut: () => Promise<void>;
-  hasRole: (role: 'super_admin' | 'admin' | 'user') => boolean;
+  hasRole: (role: 'super_admin' | 'admin' | 'user' | 'preparer' | 'approver_l1' | 'approver_l2') => boolean;
   isAdmin: () => boolean;
   refreshProfile: () => Promise<void>;
 }
@@ -169,7 +169,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setRoles([]);
   };
 
-  const hasRole = (role: 'super_admin' | 'admin' | 'user') => {
+  const hasRole = (role: 'super_admin' | 'admin' | 'user' | 'preparer' | 'approver_l1' | 'approver_l2') => {
     return roles.some(r => r.role === role);
   };
 
