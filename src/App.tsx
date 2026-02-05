@@ -7,6 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { PortalGuard } from "@/components/auth/PortalGuard";
 import Landing from "./pages/Landing";
 import LandingAlt from "./pages/LandingAlt";
+import LandingAlt2 from "./pages/LandingAlt2";
 import Demo from "./pages/Demo";
 import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
@@ -36,7 +37,8 @@ const App = () => (
           <Routes>
             {/* Public routes */}
             <Route path="/" element={<Landing />} />
-            <Route path="/landing-alt" element={<LandingAlt />} />
+            <Route path="/landing-alt-1" element={<LandingAlt />} />
+            <Route path="/landing-alt-2" element={<LandingAlt2 />} />
             <Route path="/demo" element={<Demo />} />
             <Route path="/auth" element={<Auth />} />
             <Route path="/accept-invite" element={<AcceptInvite />} />

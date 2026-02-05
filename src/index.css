@@ -2,7 +2,7 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@300;400;500;600;700&family=Playfair+Display:wght@600;700&family=Space+Mono:wght@400;700&display=swap');
 
 /* Professional Payroll Design System */
 @layer base {
@@ -179,6 +179,14 @@
   h1, h2, h3 {
     font-family: 'Playfair Display', Georgia, serif;
     @apply font-semibold tracking-tight;
+  }
+
+  .retro-body {
+    font-family: 'Space Mono', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+  }
+
+  .retro-title {
+    font-family: 'Fraunces', 'Times New Roman', serif;
   }
 
   /* Payslip print styles */

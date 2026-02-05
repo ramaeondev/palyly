@@ -85,11 +85,7 @@ export default function LandingAlt() {
             </Link>
           </div>
           <div className="flex items-center gap-3">
-            <Link to="/">
-              <Button variant="outline" size="sm" className="border-white/40 text-white bg-transparent hover:bg-white/10">
-                Classic
-              </Button>
-            </Link>
+            
             <Link to="/demo">
               <Button variant="outline" size="sm" className="border-white/40 text-white bg-transparent hover:bg-white/10">
                 <Sparkles className="h-4 w-4 mr-2" />
@@ -118,7 +114,7 @@ export default function LandingAlt() {
             <div className="space-y-8">
               <div className="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-white/10 text-white text-sm font-medium border border-white/20">
                 <Sparkles className="h-4 w-4 text-[#00F5FF]" />
-                Payroll, but make it main-character energy
+                Always free payroll, built for modern firms.
               </div>
 
               <div className="space-y-4">
@@ -150,10 +146,9 @@ export default function LandingAlt() {
               </div>
 
               <div className="flex flex-wrap gap-3 text-xs font-semibold">
-                <span className="px-3 py-1 rounded-full bg-[#00F5FF]/20 text-[#00F5FF] border border-[#00F5FF]/40">No credit card needed</span>
+                <span className="px-3 py-1 rounded-full bg-[#00F5FF]/20 text-[#00F5FF] border border-[#00F5FF]/40">Always free</span>
                 <span className="px-3 py-1 rounded-full bg-[#A855F7]/20 text-[#C4B5FD] border border-[#A855F7]/40">Open-source & privacy-first</span>
                 <span className="px-3 py-1 rounded-full bg-[#F43F5E]/20 text-[#F43F5E] border border-[#F43F5E]/40">Cloud or on-prem</span>
-                <span className="px-3 py-1 rounded-full bg-[#FDE68A]/25 text-[#FDE68A] border border-[#FDE68A]/50">Always free</span>
               </div>
             </div>
 
