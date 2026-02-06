@@ -58,6 +58,7 @@ export type Database = {
       clients: {
         Row: {
           address: string | null
+          assigned_template_id: string | null
           business_type: string | null
           city: string | null
           contact_person: string | null
@@ -72,11 +73,13 @@ export type Database = {
           name: string
           phone: string | null
           postal_code: string | null
+          selected_template_id: string | null
           state: string | null
           updated_at: string
         }
         Insert: {
           address?: string | null
+          assigned_template_id?: string | null
           business_type?: string | null
           city?: string | null
           contact_person?: string | null
@@ -91,11 +94,13 @@ export type Database = {
           name: string
           phone?: string | null
           postal_code?: string | null
+          selected_template_id?: string | null
           state?: string | null
           updated_at?: string
         }
         Update: {
           address?: string | null
+          assigned_template_id?: string | null
           business_type?: string | null
           city?: string | null
           contact_person?: string | null
@@ -110,15 +115,30 @@ export type Database = {
           name?: string
           phone?: string | null
           postal_code?: string | null
+          selected_template_id?: string | null
           state?: string | null
           updated_at?: string
         }
         Relationships: [
           {
+            foreignKeyName: "clients_assigned_template_id_fkey"
+            columns: ["assigned_template_id"]
+            isOneToOne: false
+            referencedRelation: "payslip_templates"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "clients_firm_id_fkey"
             columns: ["firm_id"]
             isOneToOne: false
             referencedRelation: "firms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "clients_selected_template_id_fkey"
+            columns: ["selected_template_id"]
+            isOneToOne: false
+            referencedRelation: "payslip_templates"
             referencedColumns: ["id"]
           },
         ]
@@ -493,6 +513,56 @@ export type Database = {
             columns: ["payroll_run_id"]
             isOneToOne: false
             referencedRelation: "payroll_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payslip_templates: {
+        Row: {
+          body: string
+          created_at: string
+          firm_id: string
+          footer: string
+          header: string
+          id: string
+          is_active: boolean
+          is_default: boolean
+          name: string
+          signatory_name: string
+          updated_at: string
+        }
+        Insert: {
+          body?: string
+          created_at?: string
+          firm_id: string
+          footer?: string
+          header?: string
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          name: string
+          signatory_name?: string
+          updated_at?: string
+        }
+        Update: {
+          body?: string
+          created_at?: string
+          firm_id?: string
+          footer?: string
+          header?: string
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          name?: string
+          signatory_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payslip_templates_firm_id_fkey"
+            columns: ["firm_id"]
+            isOneToOne: false
+            referencedRelation: "firms"
             referencedColumns: ["id"]
           },
         ]

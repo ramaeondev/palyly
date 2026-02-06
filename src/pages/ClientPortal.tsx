@@ -17,8 +17,18 @@ import {
   ArrowLeft,
   Eye,
   Search,
-  AlertTriangle
+  AlertTriangle,
+  Check,
+  Star,
+  Layout,
 } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from '@/hooks/use-toast';
 import type { Tables } from '@/integrations/supabase/types';
@@ -26,6 +36,15 @@ import type { Tables } from '@/integrations/supabase/types';
 type Employee = Tables<'employees'>;
 type Payslip = Tables<'payslips'>;
 type Client = Tables<'clients'>;
+
+interface PayslipTemplate {
+  id: string;
+  name: string;
+  header: string;
+  footer: string;
+  signatory_name: string;
+  is_default: boolean;
+}
 
 export default function ClientPortal() {
   const navigate = useNavigate();
@@ -35,6 +54,9 @@ export default function ClientPortal() {
   const [employees, setEmployees] = useState<Employee[]>([]);
   const [payslips, setPayslips] = useState<Payslip[]>([]);
   const [searchQuery, setSearchQuery] = useState('');
+  const [templates, setTemplates] = useState<PayslipTemplate[]>([]);
+  const [selectedTemplateId, setSelectedTemplateId] = useState<string | null>(null);
+  const [isSavingTemplate, setIsSavingTemplate] = useState(false);
   
   // Auth form state
   const [authMode, setAuthMode] = useState<'login' | 'set-password'>('login');
@@ -95,14 +117,55 @@ export default function ClientPortal() {
 
         if (clientUser) {
           setIsAuthenticated(true);
-          setClient(clientUser.clients as Client);
-          await fetchData(clientUser.client_id);
+          const clientData = clientUser.clients as Client;
+          setClient(clientData);
+          setSelectedTemplateId(
+            (clientData as Record<string, unknown>).selected_template_id as string | null
+          );
+          await Promise.all([
+            fetchData(clientUser.client_id),
+            fetchTemplates((clientData as Record<string, unknown>).firm_id as string),
+          ]);
         }
       }
     } catch (error) {
       console.error('Auth check failed:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchTemplates = async (firmId: string) => {
+    try {
+      const { data } = await supabase
+        .from('payslip_templates')
+        .select('id, name, header, footer, signatory_name, is_default')
+        .eq('firm_id', firmId)
+        .order('is_default', { ascending: false })
+        .order('name');
+      setTemplates((data || []) as PayslipTemplate[]);
+    } catch (error) {
+      console.error('Error fetching templates:', error);
+    }
+  };
+
+  const handleTemplateSelect = async (templateId: string) => {
+    if (!client) return;
+    setIsSavingTemplate(true);
+    try {
+      const newId = templateId === 'none' ? null : templateId;
+      const { error } = await supabase
+        .from('clients')
+        .update({ selected_template_id: newId })
+        .eq('id', client.id);
+      if (error) throw error;
+      setSelectedTemplateId(newId);
+      toast({ title: 'Template Updated', description: 'Your preferred template has been saved.' });
+    } catch (error) {
+      console.error('Error saving template:', error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to save template preference' });
+    } finally {
+      setIsSavingTemplate(false);
     }
   };
 
@@ -323,6 +386,10 @@ export default function ClientPortal() {
               <FileText className="h-4 w-4 mr-2" />
               Payslips
             </TabsTrigger>
+            <TabsTrigger value="templates">
+              <Layout className="h-4 w-4 mr-2" />
+              Templates
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="employees" className="mt-6">
@@ -420,6 +487,82 @@ export default function ClientPortal() {
                     })}
                   </TableBody>
                 </Table>
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="templates" className="mt-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Payslip Template</CardTitle>
+                <CardDescription>
+                  Select the template used for your employees' payslips. Your selection overrides the firm-assigned template.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                {templates.length === 0 ? (
+                  <p className="text-muted-foreground text-sm">No templates available. Contact your firm administrator.</p>
+                ) : (
+                  <>
+                    <Select
+                      value={selectedTemplateId || 'none'}
+                      onValueChange={handleTemplateSelect}
+                      disabled={isSavingTemplate}
+                    >
+                      <SelectTrigger className="max-w-md">
+                        <SelectValue placeholder="Select a template" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="none">Use firm-assigned template</SelectItem>
+                        {templates.map(t => (
+                          <SelectItem key={t.id} value={t.id}>
+                            {t.name}{t.is_default ? ' (Default)' : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+
+                    <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 mt-4">
+                      {templates.map(t => (
+                        <Card
+                          key={t.id}
+                          className={`cursor-pointer transition-all hover:shadow-md ${
+                            selectedTemplateId === t.id ? 'ring-2 ring-primary' : ''
+                          }`}
+                          onClick={() => handleTemplateSelect(t.id)}
+                        >
+                          <CardContent className="p-4">
+                            <div className="flex items-center justify-between mb-2">
+                              <h4 className="font-medium text-sm">{t.name}</h4>
+                              <div className="flex gap-1">
+                                {t.is_default && (
+                                  <Badge variant="secondary" className="text-xs gap-1">
+                                    <Star className="h-3 w-3" />
+                                    Default
+                                  </Badge>
+                                )}
+                                {selectedTemplateId === t.id && (
+                                  <Badge variant="default" className="text-xs gap-1">
+                                    <Check className="h-3 w-3" />
+                                    Selected
+                                  </Badge>
+                                )}
+                              </div>
+                            </div>
+                            {t.header && (
+                              <p className="text-xs text-muted-foreground line-clamp-2">{t.header}</p>
+                            )}
+                            {t.signatory_name && (
+                              <p className="text-xs mt-2 italic" style={{ fontFamily: "'Dancing Script', cursive" }}>
+                                {t.signatory_name}
+                              </p>
+                            )}
+                          </CardContent>
+                        </Card>
+                      ))}
+                    </div>
+                  </>
+                )}
               </CardContent>
             </Card>
           </TabsContent>
