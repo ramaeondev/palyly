@@ -38,6 +38,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 const mainNavItems = [
   { title: 'Dashboard', url: '/dashboard', icon: LayoutDashboard },
   { title: 'Clients', url: '/clients', icon: Building2 },
+  { title: 'Templates', url: '/templates', icon: FileText },
   { title: 'Payroll', url: '/payroll', icon: Calendar },
   { title: 'Generate Payslip', url: '/payslips', icon: FileText },
 ];

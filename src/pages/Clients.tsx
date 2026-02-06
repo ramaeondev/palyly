@@ -14,6 +14,13 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -34,6 +41,12 @@ import { ImageUpload } from '@/components/ImageUpload';
 import { BulkImport } from '@/components/BulkImport';
 import type { Json } from '@/integrations/supabase/types';
 
+interface PayslipTemplate {
+  id: string;
+  name: string;
+  is_default: boolean;
+}
+
 interface Client {
   id: string;
   firm_id: string;
@@ -51,6 +64,8 @@ interface Client {
   is_active: boolean;
   created_at: string;
   custom_fields: Json;
+  assigned_template_id: string | null;
+  selected_template_id: string | null;
   employees_count?: number;
 }
 
@@ -67,6 +82,7 @@ interface ClientFormData {
   contact_person: string;
   logo_url: string;
   custom_fields: CustomField[];
+  assigned_template_id: string;
 }
 
 interface FormErrors {
@@ -87,6 +103,7 @@ const initialFormData: ClientFormData = {
   contact_person: '',
   logo_url: '',
   custom_fields: [],
+  assigned_template_id: '',
 };
 
 export default function Clients() {
@@ -104,9 +121,11 @@ export default function Clients() {
   const [isInviteDialogOpen, setIsInviteDialogOpen] = useState(false);
   const [inviteClient, setInviteClient] = useState<Client | null>(null);
   const [isBulkImportOpen, setIsBulkImportOpen] = useState(false);
+  const [templates, setTemplates] = useState<PayslipTemplate[]>([]);
 
   useEffect(() => {
     fetchClients();
+    fetchTemplates();
   }, []);
 
   const fetchClients = async () => {
@@ -143,6 +162,19 @@ export default function Clients() {
     }
   };
 
+  const fetchTemplates = async () => {
+    try {
+      const { data } = await supabase
+        .from('payslip_templates')
+        .select('id, name, is_default')
+        .order('is_default', { ascending: false })
+        .order('name');
+      setTemplates((data || []) as PayslipTemplate[]);
+    } catch (error) {
+      console.error('Error fetching templates:', error);
+    }
+  };
+
   const parseCustomFields = (json: Json): CustomField[] => {
     if (!json || !Array.isArray(json)) return [];
     return json.map((item: unknown) => {
@@ -172,6 +204,7 @@ export default function Clients() {
         contact_person: client.contact_person || '',
         logo_url: client.logo_url || '',
         custom_fields: parseCustomFields(client.custom_fields),
+        assigned_template_id: client.assigned_template_id || '',
       });
     } else {
       setSelectedClient(null);
@@ -226,6 +259,7 @@ export default function Clients() {
         contact_person: formData.contact_person || null,
         logo_url: formData.logo_url || null,
         custom_fields: formData.custom_fields as unknown as Json,
+        assigned_template_id: formData.assigned_template_id || null,
       };
 
       if (selectedClient) {
@@ -391,7 +425,7 @@ export default function Clients() {
                 <TableHead>Client</TableHead>
                 <TableHead>Business Type</TableHead>
                 <TableHead>Contact Person</TableHead>
-                <TableHead>Email</TableHead>
+                <TableHead>Template</TableHead>
                 <TableHead>Employees</TableHead>
                 <TableHead>Status</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
@@ -444,7 +478,15 @@ export default function Clients() {
                     </TableCell>
                     <TableCell>{client.business_type || '-'}</TableCell>
                     <TableCell>{client.contact_person || '-'}</TableCell>
-                    <TableCell>{client.email || '-'}</TableCell>
+                    <TableCell>
+                      {(() => {
+                        const tplId = client.selected_template_id || client.assigned_template_id;
+                        const tpl = templates.find(t => t.id === tplId);
+                        return tpl ? tpl.name : (
+                          <span className="text-muted-foreground text-xs">Default</span>
+                        );
+                      })()}
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-1">
                         <Users className="h-4 w-4 text-muted-foreground" />
@@ -648,6 +690,32 @@ export default function Clients() {
                     />
                   </div>
                 </div>
+              </div>
+
+              <Separator />
+
+              {/* Template Assignment */}
+              <div className="space-y-2">
+                <Label>Payslip Template</Label>
+                <Select
+                  value={formData.assigned_template_id || 'none'}
+                  onValueChange={(v) => setFormData({ ...formData, assigned_template_id: v === 'none' ? '' : v })}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Use default template" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Use default template</SelectItem>
+                    {templates.map(t => (
+                      <SelectItem key={t.id} value={t.id}>
+                        {t.name}{t.is_default ? ' (Default)' : ''}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground">
+                  Assign a template for this client's payslips. Leave unset to use the default.
+                </p>
               </div>
 
               <Separator />
