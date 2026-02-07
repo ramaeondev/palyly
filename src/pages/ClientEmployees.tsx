@@ -417,6 +417,13 @@ export default function ClientEmployees() {
                 <Plus className="mr-2 h-4 w-4" />
                 Add Employee
               </Button>
+              <Button
+                variant="outline"
+                onClick={() => window.open(`/clients/${clientId}/employees/new`, '_blank', 'width=900,height=800')}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add (New Window)
+              </Button>
             </div>
           )}
         </div>
@@ -509,7 +516,8 @@ export default function ClientEmployees() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleOpenDialog(employee)}
+                              onClick={() => window.open(`/employees/${employee.id}/edit`, '_blank', 'width=900,height=800')}
+                              title="Edit in new window"
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>

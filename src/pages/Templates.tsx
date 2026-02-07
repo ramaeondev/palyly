@@ -3,98 +3,51 @@ import { DashboardLayout } from '@/components/layout/DashboardLayout';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
-import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { useToast } from '@/hooks/use-toast';
+import { Loader2, Star, Check, Eye } from 'lucide-react';
+import { PAYSLIP_DESIGN_TEMPLATES, type PayslipDesignTemplate } from '@/lib/payslip-templates';
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
-  DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Separator } from '@/components/ui/separator';
-import { useToast } from '@/hooks/use-toast';
-import {
-  Plus,
-  Pencil,
-  Trash2,
-  FileText,
-  Loader2,
-  Star,
-  Eye,
-} from 'lucide-react';
 
-interface PayslipTemplate {
+interface DbTemplate {
   id: string;
-  firm_id: string;
   name: string;
+  is_default: boolean;
   header: string;
-  body: string;
   footer: string;
   signatory_name: string;
-  is_default: boolean;
-  is_active: boolean;
-  created_at: string;
 }
-
-interface TemplateFormData {
-  name: string;
-  header: string;
-  body: string;
-  footer: string;
-  signatory_name: string;
-  is_default: boolean;
-}
-
-const initialFormData: TemplateFormData = {
-  name: '',
-  header: '',
-  body: '',
-  footer: '',
-  signatory_name: '',
-  is_default: false,
-};
 
 export default function TemplatesPage() {
   const { firm, isAdmin } = useAuth();
   const { toast } = useToast();
-  const [templates, setTemplates] = useState<PayslipTemplate[]>([]);
+  const [dbTemplates, setDbTemplates] = useState<DbTemplate[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
-  const [selectedTemplate, setSelectedTemplate] = useState<PayslipTemplate | null>(null);
-  const [formData, setFormData] = useState<TemplateFormData>(initialFormData);
-  const [isSaving, setIsSaving] = useState(false);
+  const [defaultTemplateId, setDefaultTemplateId] = useState<string | null>(null);
+  const [previewTemplate, setPreviewTemplate] = useState<PayslipDesignTemplate | null>(null);
 
   useEffect(() => {
-    fetchTemplates();
+    fetchDbTemplates();
   }, []);
 
-  const fetchTemplates = async () => {
+  const fetchDbTemplates = async () => {
     try {
       const { data, error } = await supabase
         .from('payslip_templates')
-        .select('*')
-        .order('is_default', { ascending: false })
-        .order('name');
+        .select('id, name, is_default, header, footer, signatory_name')
+        .order('is_default', { ascending: false });
 
       if (error) throw error;
-      setTemplates((data || []) as PayslipTemplate[]);
+      const templates = (data || []) as DbTemplate[];
+      setDbTemplates(templates);
+      const def = templates.find(t => t.is_default);
+      if (def) setDefaultTemplateId(def.id);
     } catch (error) {
       console.error('Error fetching templates:', error);
     } finally {
@@ -102,423 +55,353 @@ export default function TemplatesPage() {
     }
   };
 
-  const handleOpenDialog = (template?: PayslipTemplate) => {
-    if (template) {
-      setSelectedTemplate(template);
-      setFormData({
-        name: template.name,
-        header: template.header,
-        body: template.body,
-        footer: template.footer,
-        signatory_name: template.signatory_name,
-        is_default: template.is_default,
-      });
-    } else {
-      setSelectedTemplate(null);
-      setFormData({
-        ...initialFormData,
-        is_default: templates.length === 0, // First template is default
-      });
-    }
-    setIsDialogOpen(true);
-  };
-
-  const handleSave = async () => {
-    if (!formData.name.trim()) {
-      toast({ variant: 'destructive', title: 'Validation Error', description: 'Template name is required' });
-      return;
-    }
-
-    setIsSaving(true);
-
+  // Ensure all 10 design templates exist in DB, create missing ones
+  const syncTemplates = async () => {
+    if (!firm?.id) return;
+    setLoading(true);
     try {
-      // If setting as default, unset current default first
-      if (formData.is_default) {
-        const currentDefault = templates.find(t => t.is_default && t.id !== selectedTemplate?.id);
-        if (currentDefault) {
-          await supabase
-            .from('payslip_templates')
-            .update({ is_default: false })
-            .eq('id', currentDefault.id);
-        }
-      }
+      const existingNames = dbTemplates.map(t => t.name);
+      const missing = PAYSLIP_DESIGN_TEMPLATES.filter(t => !existingNames.includes(t.name));
 
-      if (selectedTemplate) {
-        const { error } = await supabase
-          .from('payslip_templates')
-          .update({
-            name: formData.name,
-            header: formData.header,
-            body: formData.body,
-            footer: formData.footer,
-            signatory_name: formData.signatory_name,
-            is_default: formData.is_default,
-          })
-          .eq('id', selectedTemplate.id);
+      if (missing.length > 0) {
+        const isFirst = dbTemplates.length === 0;
+        const inserts = missing.map((t, i) => ({
+          firm_id: firm.id,
+          name: t.name,
+          header: t.description,
+          body: `style:${t.id}`,
+          footer: '',
+          signatory_name: '',
+          is_default: isFirst && i === 0,
+        }));
 
+        const { error } = await supabase.from('payslip_templates').insert(inserts);
         if (error) throw error;
-        toast({ title: 'Success', description: 'Template updated successfully' });
+        toast({ title: 'Templates synced', description: `${missing.length} templates added` });
+        await fetchDbTemplates();
       } else {
-        const { error } = await supabase.from('payslip_templates').insert({
-          firm_id: firm?.id,
-          name: formData.name,
-          header: formData.header,
-          body: formData.body,
-          footer: formData.footer,
-          signatory_name: formData.signatory_name,
-          is_default: formData.is_default,
-        });
-
-        if (error) throw error;
-        toast({ title: 'Success', description: 'Template created successfully' });
+        toast({ title: 'All templates present', description: 'All 10 design templates are available' });
       }
-
-      setIsDialogOpen(false);
-      fetchTemplates();
-    } catch (error: unknown) {
-      console.error('Error saving template:', error);
-      const message = error instanceof Error ? error.message : 'Failed to save template';
-      toast({ variant: 'destructive', title: 'Error', description: message });
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!selectedTemplate) return;
-
-    setIsSaving(true);
-    try {
-      const { error } = await supabase
-        .from('payslip_templates')
-        .delete()
-        .eq('id', selectedTemplate.id);
-
-      if (error) throw error;
-      toast({ title: 'Success', description: 'Template deleted successfully' });
-      setIsDeleteDialogOpen(false);
-      fetchTemplates();
     } catch (error) {
-      console.error('Error deleting template:', error);
-      toast({ variant: 'destructive', title: 'Error', description: 'Failed to delete template' });
+      console.error('Error syncing templates:', error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to sync templates' });
     } finally {
-      setIsSaving(false);
+      setLoading(false);
     }
   };
 
-  const handlePreview = (template: PayslipTemplate) => {
-    setSelectedTemplate(template);
-    setIsPreviewOpen(true);
+  const handleSetDefault = async (templateId: string) => {
+    if (!isAdmin()) return;
+    try {
+      // Unset current default
+      if (defaultTemplateId) {
+        await supabase.from('payslip_templates').update({ is_default: false }).eq('id', defaultTemplateId);
+      }
+      // Set new default
+      await supabase.from('payslip_templates').update({ is_default: true }).eq('id', templateId);
+      setDefaultTemplateId(templateId);
+      toast({ title: 'Default updated', description: 'Default template has been changed' });
+      await fetchDbTemplates();
+    } catch (error) {
+      console.error('Error setting default:', error);
+      toast({ variant: 'destructive', title: 'Error', description: 'Failed to update default' });
+    }
+  };
+
+  // Map DB templates to design definitions
+  const getDesignForDbTemplate = (dbTemplate: DbTemplate): PayslipDesignTemplate | undefined => {
+    // Try to match by body field (style:id) or by name
+    return PAYSLIP_DESIGN_TEMPLATES.find(d => d.name === dbTemplate.name);
   };
 
   return (
-    <DashboardLayout title="Templates" description="Manage payslip templates for your clients">
+    <DashboardLayout title="Payslip Templates" description="Choose from 10 pre-designed payslip layouts">
       <div className="space-y-6">
-        {/* Actions Bar */}
         <div className="flex justify-between items-center">
           <p className="text-sm text-muted-foreground">
-            {templates.length} template{templates.length !== 1 ? 's' : ''} configured
+            {dbTemplates.length} of {PAYSLIP_DESIGN_TEMPLATES.length} templates available
           </p>
-          {isAdmin() && (
-            <Button onClick={() => handleOpenDialog()}>
-              <Plus className="h-4 w-4 mr-2" />
-              New Template
+          {isAdmin() && dbTemplates.length < PAYSLIP_DESIGN_TEMPLATES.length && (
+            <Button onClick={syncTemplates} disabled={loading}>
+              {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              Add Missing Templates
+            </Button>
+          )}
+          {isAdmin() && dbTemplates.length === 0 && (
+            <Button onClick={syncTemplates} disabled={loading} className="btn-gradient">
+              {loading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : null}
+              Initialize All Templates
             </Button>
           )}
         </div>
 
-        {/* Templates List */}
         {loading ? (
           <div className="flex justify-center py-12">
             <Loader2 className="h-8 w-8 animate-spin" />
           </div>
-        ) : templates.length === 0 ? (
-          <Card>
-            <CardContent className="py-12 text-center">
-              <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
-              <h3 className="text-lg font-semibold mb-2">No Templates Yet</h3>
-              <p className="text-muted-foreground mb-4">
-                Create your first payslip template to get started
-              </p>
-              {isAdmin() && (
-                <Button onClick={() => handleOpenDialog()}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Create Template
-                </Button>
-              )}
-            </CardContent>
-          </Card>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {templates.map((template) => (
-              <Card key={template.id} className={template.is_default ? 'ring-2 ring-primary' : ''}>
-                <CardHeader className="pb-3">
-                  <div className="flex items-start justify-between">
-                    <div>
-                      <CardTitle className="text-base flex items-center gap-2">
-                        {template.name}
-                        {template.is_default && (
-                          <Badge variant="default" className="text-xs gap-1">
-                            <Star className="h-3 w-3" />
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+            {PAYSLIP_DESIGN_TEMPLATES.map((design) => {
+              const dbMatch = dbTemplates.find(d => d.name === design.name);
+              const isDefault = dbMatch?.is_default || false;
+              const isAvailable = !!dbMatch;
+
+              return (
+                <Card
+                  key={design.id}
+                  className={`overflow-hidden transition-all hover:shadow-lg ${
+                    isDefault ? 'ring-2 ring-primary' : ''
+                  } ${!isAvailable ? 'opacity-50' : ''}`}
+                >
+                  {/* Mini Preview */}
+                  <div
+                    className="h-40 relative overflow-hidden"
+                    style={{ backgroundColor: design.headerBg }}
+                  >
+                    {/* Header preview */}
+                    <div className="p-4 flex items-start" style={{
+                      justifyContent: design.logoPosition === 'center' ? 'center' : design.logoPosition === 'right' ? 'flex-end' : 'flex-start'
+                    }}>
+                      <div>
+                        <div
+                          className="w-10 h-10 rounded bg-white/20 mb-2"
+                          style={{ margin: design.logoPosition === 'center' ? '0 auto' : undefined }}
+                        />
+                        <p style={{
+                          color: design.headerText,
+                          fontFamily: design.headerFont,
+                          fontSize: '11px',
+                          fontWeight: 700,
+                          textAlign: design.logoPosition === 'center' ? 'center' : 'left',
+                        }}>
+                          Company Name
+                        </p>
+                        <p style={{ color: design.headerText, opacity: 0.7, fontSize: '8px', fontFamily: design.fontFamily }}>
+                          SALARY SLIP
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Body preview lines */}
+                    <div className="absolute bottom-0 left-0 right-0 bg-white p-3">
+                      <div className="space-y-1">
+                        <div className="flex justify-between">
+                          <div className="h-1.5 w-16 rounded" style={{ backgroundColor: design.tableHeaderBg }} />
+                          <div className="h-1.5 w-10 rounded bg-muted" />
+                        </div>
+                        <div className="flex justify-between">
+                          <div className="h-1.5 w-20 rounded bg-muted/60" />
+                          <div className="h-1.5 w-8 rounded bg-muted/60" />
+                        </div>
+                        <div className="flex justify-between">
+                          <div className="h-1.5 w-14 rounded bg-muted/40" />
+                          <div className="h-1.5 w-12 rounded bg-muted/40" />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  <CardContent className="p-4 space-y-3">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <h3 className="font-semibold text-sm">{design.name}</h3>
+                        <p className="text-xs text-muted-foreground mt-0.5">{design.description}</p>
+                      </div>
+                      <div className="flex gap-1">
+                        {isDefault && (
+                          <Badge variant="default" className="text-[10px] gap-1">
+                            <Star className="h-2.5 w-2.5" />
                             Default
                           </Badge>
                         )}
-                      </CardTitle>
-                      <CardDescription className="mt-1">
-                        {template.signatory_name ? `Signatory: ${template.signatory_name}` : 'No signatory set'}
-                      </CardDescription>
+                      </div>
                     </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {template.header && (
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-1">Header</p>
-                      <p className="text-sm line-clamp-2">{template.header}</p>
-                    </div>
-                  )}
-                  {template.body && (
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-1">Body</p>
-                      <p className="text-sm line-clamp-2">{template.body}</p>
-                    </div>
-                  )}
-                  {template.footer && (
-                    <div>
-                      <p className="text-xs font-medium text-muted-foreground mb-1">Footer</p>
-                      <p className="text-sm line-clamp-2">{template.footer}</p>
-                    </div>
-                  )}
 
-                  <Separator />
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <span className="capitalize">{design.style}</span>
+                      <span>•</span>
+                      <span>Logo: {design.logoPosition}</span>
+                      <span>•</span>
+                      <span style={{ fontFamily: design.fontFamily, fontSize: '10px' }}>Aa</span>
+                    </div>
 
-                  <div className="flex justify-end gap-2">
-                    <Button variant="ghost" size="sm" onClick={() => handlePreview(template)}>
-                      <Eye className="h-4 w-4 mr-1" />
-                      Preview
-                    </Button>
-                    {isAdmin() && (
-                      <>
-                        <Button variant="ghost" size="sm" onClick={() => handleOpenDialog(template)}>
-                          <Pencil className="h-4 w-4 mr-1" />
-                          Edit
+                    <div className="flex gap-2 pt-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="flex-1"
+                        onClick={() => setPreviewTemplate(design)}
+                      >
+                        <Eye className="h-3 w-3 mr-1" />
+                        Preview
+                      </Button>
+                      {isAdmin() && isAvailable && !isDefault && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleSetDefault(dbMatch!.id)}
+                        >
+                          <Star className="h-3 w-3 mr-1" />
+                          Set Default
                         </Button>
-                        {!template.is_default && (
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => {
-                              setSelectedTemplate(template);
-                              setIsDeleteDialogOpen(true);
-                            }}
-                          >
-                            <Trash2 className="h-4 w-4 text-destructive" />
-                          </Button>
-                        )}
-                      </>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
           </div>
         )}
       </div>
 
-      {/* Create/Edit Template Dialog */}
-      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh]">
+      {/* Full Preview Dialog */}
+      <Dialog open={!!previewTemplate} onOpenChange={() => setPreviewTemplate(null)}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-auto">
           <DialogHeader>
-            <DialogTitle>{selectedTemplate ? 'Edit Template' : 'New Template'}</DialogTitle>
-            <DialogDescription>
-              Configure the header, body, footer, and signatory for this payslip template
-            </DialogDescription>
+            <DialogTitle>Preview: {previewTemplate?.name}</DialogTitle>
           </DialogHeader>
-
-          <ScrollArea className="max-h-[60vh] pr-4">
-            <div className="space-y-6 py-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Template Name *</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-                  placeholder="e.g., Standard Payslip"
-                />
-              </div>
-
-              <Separator />
-
-              <div className="space-y-2">
-                <Label htmlFor="header">Header</Label>
-                <Textarea
-                  id="header"
-                  value={formData.header}
-                  onChange={(e) => setFormData(prev => ({ ...prev, header: e.target.value }))}
-                  placeholder="Content displayed at the top of the payslip (e.g., company tagline, payslip title)"
-                  rows={3}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Displayed prominently at the top of every payslip
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="body">Body</Label>
-                <Textarea
-                  id="body"
-                  value={formData.body}
-                  onChange={(e) => setFormData(prev => ({ ...prev, body: e.target.value }))}
-                  placeholder="Additional content or disclaimers shown in the payslip body"
-                  rows={4}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Supplementary text rendered within the payslip body
-                </p>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="footer">Footer</Label>
-                <Textarea
-                  id="footer"
-                  value={formData.footer}
-                  onChange={(e) => setFormData(prev => ({ ...prev, footer: e.target.value }))}
-                  placeholder="Footer text (e.g., 'This is a system-generated payslip')"
-                  rows={3}
-                />
-                <p className="text-xs text-muted-foreground">
-                  Displayed at the bottom of the payslip
-                </p>
-              </div>
-
-              <Separator />
-
-              <div className="space-y-2">
-                <Label htmlFor="signatory_name">Authorized Signatory Name</Label>
-                <Input
-                  id="signatory_name"
-                  value={formData.signatory_name}
-                  onChange={(e) => setFormData(prev => ({ ...prev, signatory_name: e.target.value }))}
-                  placeholder="e.g., Jane Smith, HR Manager"
-                />
-                <p className="text-xs text-muted-foreground">
-                  Rendered in a signature-style font on the payslip. This can also be configured per client.
-                </p>
-              </div>
-
-              <div className="flex items-center justify-between rounded-lg border p-4">
-                <div>
-                  <Label>Set as Default Template</Label>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    The default template is used when no specific template is assigned to a client
-                  </p>
-                </div>
-                <Switch
-                  checked={formData.is_default}
-                  onCheckedChange={(checked) => setFormData(prev => ({ ...prev, is_default: checked }))}
-                  disabled={selectedTemplate?.is_default && templates.length > 1}
-                />
-              </div>
-            </div>
-          </ScrollArea>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button onClick={handleSave} disabled={isSaving}>
-              {isSaving ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Saving...
-                </>
-              ) : (
-                selectedTemplate ? 'Update Template' : 'Create Template'
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Delete Confirmation Dialog */}
-      <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Delete Template</DialogTitle>
-            <DialogDescription>
-              Are you sure you want to delete "{selectedTemplate?.name}"? This action cannot be undone.
-              Clients assigned to this template will fall back to the default template.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
-              Cancel
-            </Button>
-            <Button variant="destructive" onClick={handleDelete} disabled={isSaving}>
-              {isSaving ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Deleting...
-                </>
-              ) : (
-                'Delete Template'
-              )}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Preview Dialog */}
-      <Dialog open={isPreviewOpen} onOpenChange={setIsPreviewOpen}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Template Preview: {selectedTemplate?.name}</DialogTitle>
-          </DialogHeader>
-          {selectedTemplate && (
-            <div className="border rounded-lg p-6 space-y-6 bg-card">
-              {/* Header */}
-              {selectedTemplate.header && (
-                <div className="text-center border-b pb-4">
-                  <p className="text-sm whitespace-pre-wrap">{selectedTemplate.header}</p>
-                </div>
-              )}
-
-              {/* Body placeholder */}
-              <div className="space-y-3">
-                {selectedTemplate.body ? (
-                  <p className="text-sm whitespace-pre-wrap">{selectedTemplate.body}</p>
-                ) : (
-                  <div className="text-center text-muted-foreground text-sm py-8">
-                    [ Payslip salary details will appear here ]
-                  </div>
-                )}
-              </div>
-
-              {/* Signatory */}
-              {selectedTemplate.signatory_name && (
-                <div className="text-right pt-4 border-t">
-                  <p className="text-xs text-muted-foreground mb-1">Authorized Signatory</p>
-                  <p
-                    className="text-lg italic"
-                    style={{ fontFamily: "'Dancing Script', 'Brush Script MT', cursive" }}
-                  >
-                    {selectedTemplate.signatory_name}
-                  </p>
-                </div>
-              )}
-
-              {/* Footer */}
-              {selectedTemplate.footer && (
-                <div className="text-center border-t pt-4">
-                  <p className="text-xs text-muted-foreground whitespace-pre-wrap">
-                    {selectedTemplate.footer}
-                  </p>
-                </div>
-              )}
-            </div>
+          {previewTemplate && (
+            <PayslipTemplateFullPreview design={previewTemplate} />
           )}
         </DialogContent>
       </Dialog>
     </DashboardLayout>
+  );
+}
+
+function PayslipTemplateFullPreview({ design }: { design: PayslipDesignTemplate }) {
+  return (
+    <div
+      className="border rounded-lg overflow-hidden shadow-sm"
+      style={{ fontFamily: design.fontFamily, fontSize: '12px' }}
+    >
+      {/* Header */}
+      <div
+        className="p-6"
+        style={{ backgroundColor: design.headerBg, color: design.headerText }}
+      >
+        <div style={{
+          display: 'flex',
+          justifyContent: design.logoPosition === 'center' ? 'center' : design.logoPosition === 'right' ? 'flex-end' : 'flex-start',
+          alignItems: 'center',
+          gap: '16px',
+        }}>
+          <div className="w-14 h-14 rounded-lg bg-white/20 flex items-center justify-center text-lg font-bold">
+            Logo
+          </div>
+          <div style={{ textAlign: design.logoPosition === 'center' ? 'center' : 'left' }}>
+            <h2 style={{ fontFamily: design.headerFont, fontSize: '18px', fontWeight: 700 }}>
+              Acme Corporation Pvt. Ltd.
+            </h2>
+            <p style={{ opacity: 0.8, fontSize: '11px' }}>123 Business Park, Tech City, State - 400001</p>
+            <p style={{ opacity: 0.6, fontSize: '10px', marginTop: '4px' }}>PAYSLIP FOR THE MONTH OF JANUARY 2026</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Employee Info */}
+      <div className="p-4 grid grid-cols-2 gap-3 text-xs" style={{ borderBottom: design.borderStyle }}>
+        <div><span className="text-muted-foreground">Employee Name:</span> <strong>John Doe</strong></div>
+        <div><span className="text-muted-foreground">Employee ID:</span> <strong>EMP001</strong></div>
+        <div><span className="text-muted-foreground">Department:</span> Engineering</div>
+        <div><span className="text-muted-foreground">Designation:</span> Senior Engineer</div>
+        <div><span className="text-muted-foreground">Date of Joining:</span> 15 Mar 2022</div>
+        <div><span className="text-muted-foreground">Pay Date:</span> 31 Jan 2026</div>
+      </div>
+
+      {/* Salary Table */}
+      <div className="p-4">
+        <div className="grid grid-cols-2 gap-4">
+          {/* Earnings */}
+          <div>
+            <div
+              className="px-3 py-2 rounded-t font-semibold text-xs"
+              style={{ backgroundColor: design.tableHeaderBg, color: design.tableHeaderText }}
+            >
+              Earnings
+            </div>
+            <div className="space-y-0" style={{ border: design.borderStyle, borderTop: 'none' }}>
+              {[
+                ['Basic Salary', '₹25,000'],
+                ['HRA', '₹10,000'],
+                ['Conveyance', '₹3,000'],
+                ['Medical', '₹2,500'],
+                ['Special Allowance', '₹9,500'],
+              ].map(([name, amount]) => (
+                <div key={name} className="flex justify-between px-3 py-1.5 text-xs" style={{ borderBottom: design.borderStyle }}>
+                  <span>{name}</span>
+                  <span className="font-medium">{amount}</span>
+                </div>
+              ))}
+              <div className="flex justify-between px-3 py-2 font-bold text-xs" style={{ backgroundColor: design.tableHeaderBg }}>
+                <span>Total Earnings</span>
+                <span>₹50,000</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Deductions */}
+          <div>
+            <div
+              className="px-3 py-2 rounded-t font-semibold text-xs"
+              style={{ backgroundColor: design.tableHeaderBg, color: design.tableHeaderText }}
+            >
+              Deductions
+            </div>
+            <div className="space-y-0" style={{ border: design.borderStyle, borderTop: 'none' }}>
+              {[
+                ['Provident Fund', '₹3,000'],
+                ['Professional Tax', '₹200'],
+                ['Income Tax', '₹2,500'],
+                ['ESI', '₹375'],
+              ].map(([name, amount]) => (
+                <div key={name} className="flex justify-between px-3 py-1.5 text-xs" style={{ borderBottom: design.borderStyle }}>
+                  <span>{name}</span>
+                  <span className="font-medium">{amount}</span>
+                </div>
+              ))}
+              <div className="py-1.5 px-3" style={{ borderBottom: design.borderStyle }}>&nbsp;</div>
+              <div className="flex justify-between px-3 py-2 font-bold text-xs" style={{ backgroundColor: design.tableHeaderBg }}>
+                <span>Total Deductions</span>
+                <span>₹6,075</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Net Pay */}
+        <div
+          className="mt-4 p-3 rounded font-bold text-sm flex justify-between items-center"
+          style={{ backgroundColor: design.accentColor, color: design.headerText }}
+        >
+          <span>Net Pay</span>
+          <span className="text-base">₹43,925</span>
+        </div>
+
+        <p className="text-[10px] text-muted-foreground mt-2 italic">
+          Amount in words: Forty Three Thousand Nine Hundred Twenty Five Only
+        </p>
+      </div>
+
+      {/* Footer */}
+      <div className="p-4" style={{ backgroundColor: design.footerBg, borderTop: design.borderStyle }}>
+        <div className="flex justify-between items-end">
+          <div>
+            <p style={{ color: design.footerText, fontSize: '10px' }}>
+              This is a computer-generated payslip and does not require a physical signature.
+            </p>
+            <p style={{ color: design.footerText, fontSize: '9px', marginTop: '4px' }}>
+              Acme Corporation Pvt. Ltd. | 123 Business Park, Tech City
+            </p>
+          </div>
+          <div className="text-right">
+            <p style={{ fontFamily: "'Dancing Script', cursive", fontSize: '16px', color: design.accentColor }}>
+              Jane Smith
+            </p>
+            <p style={{ fontSize: '9px', color: design.footerText }}>Authorized Signatory</p>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 }

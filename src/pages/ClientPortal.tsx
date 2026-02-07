@@ -496,7 +496,7 @@ export default function ClientPortal() {
               <CardHeader>
                 <CardTitle>Payslip Template</CardTitle>
                 <CardDescription>
-                  Select the template used for your employees' payslips. Your selection overrides the firm-assigned template.
+                  Select a design template for your employees' payslips. Your selection overrides the firm-assigned template.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -549,14 +549,6 @@ export default function ClientPortal() {
                                 )}
                               </div>
                             </div>
-                            {t.header && (
-                              <p className="text-xs text-muted-foreground line-clamp-2">{t.header}</p>
-                            )}
-                            {t.signatory_name && (
-                              <p className="text-xs mt-2 italic" style={{ fontFamily: "'Dancing Script', cursive" }}>
-                                {t.signatory_name}
-                              </p>
-                            )}
                           </CardContent>
                         </Card>
                       ))}

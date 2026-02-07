@@ -413,6 +413,13 @@ export default function Clients() {
                 <Plus className="mr-2 h-4 w-4" />
                 Add Client
               </Button>
+              <Button
+                variant="outline"
+                onClick={() => window.open('/clients/new', '_blank', 'width=900,height=800')}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                Add (New Window)
+              </Button>
             </div>
           )}
         </div>
@@ -521,7 +528,8 @@ export default function Clients() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleOpenDialog(client)}
+                              onClick={() => window.open(`/clients/${client.id}/edit`, '_blank', 'width=900,height=800')}
+                              title="Edit in new window"
                             >
                               <Pencil className="h-4 w-4" />
                             </Button>
