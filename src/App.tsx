@@ -13,6 +13,8 @@ import Auth from "./pages/Auth";
 import Dashboard from "./pages/Dashboard";
 import Clients from "./pages/Clients";
 import ClientEmployees from "./pages/ClientEmployees";
+import ClientForm from "./pages/ClientForm";
+import EmployeeForm from "./pages/EmployeeForm";
 import Users from "./pages/Users";
 import Settings from "./pages/Settings";
 import Payslips from "./pages/Payslips";
@@ -49,6 +51,12 @@ const App = () => (
             {/* Portal routes - strictly isolated */}
             <Route path="/client-portal" element={<ClientPortal />} />
             <Route path="/employee-portal" element={<EmployeePortal />} />
+            
+            {/* Dedicated form pages - can open in new window */}
+            <Route path="/clients/new" element={<ClientForm />} />
+            <Route path="/clients/:clientId/edit" element={<ClientForm />} />
+            <Route path="/clients/:clientId/employees/new" element={<EmployeeForm />} />
+            <Route path="/employees/:employeeId/edit" element={<EmployeeForm />} />
             
             {/* Firm dashboard routes - protected by PortalGuard */}
             <Route path="/dashboard" element={
